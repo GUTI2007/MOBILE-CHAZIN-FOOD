@@ -107,49 +107,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     _buildQuickActionsGrid(isDark),
                     const SizedBox(height: 20),
 
-                    // ─── Metric Cards (Scroll Vertical exact style) ───
-                    _buildMetricCard(
-                      icon: Icons.attach_money_rounded,
-                      iconColor: const Color(0xFF10B981),
-                      iconBg: const Color(0xFFD1FAE5),
-                      label: 'Ventas del Mes',
-                      value: '\$28.4M',
-                      trendText: '↗ +12.5%',
-                      trendColor: const Color(0xFF10B981),
-                      isDark: isDark,
+                    // ─── Metric Cards (2×2 Grid) ───
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricCard(
+                            icon: Icons.attach_money_rounded,
+                            iconColor: const Color(0xFF10B981),
+                            iconBg: const Color(0xFFD1FAE5),
+                            label: 'Ventas del Mes',
+                            value: '\$28.4M',
+                            trendText: '↗ +12.5%',
+                            trendColor: const Color(0xFF10B981),
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMetricCard(
+                            icon: Icons.shopping_cart_outlined,
+                            iconColor: const Color(0xFF3B82F6),
+                            iconBg: const Color(0xFFDBEAFE),
+                            label: 'Total Pedidos',
+                            value: '1,248',
+                            trendText: '↗ +8.2%',
+                            trendColor: const Color(0xFF3B82F6),
+                            isDark: isDark,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
-                    _buildMetricCard(
-                      icon: Icons.shopping_cart_outlined,
-                      iconColor: const Color(0xFF3B82F6),
-                      iconBg: const Color(0xFFDBEAFE),
-                      label: 'Total Pedidos',
-                      value: '1,248',
-                      trendText: '↗ +8.2%',
-                      trendColor: const Color(0xFF3B82F6),
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildMetricCard(
-                      icon: Icons.people_outline_rounded,
-                      iconColor: const Color(0xFF8B5CF6),
-                      iconBg: const Color(0xFFEDE9FE),
-                      label: 'Clientes Activos',
-                      value: '342',
-                      trendText: '↗ +15.3%',
-                      trendColor: const Color(0xFF10B981),
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildMetricCard(
-                      icon: Icons.inventory_2_outlined,
-                      iconColor: const Color(0xFFEF4444),
-                      iconBg: const Color(0xFFFEE2E2),
-                      label: 'Productos',
-                      value: '68',
-                      trendText: '⚠ 5 bajo stock',
-                      trendColor: const Color(0xFFEF4444),
-                      isDark: isDark,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricCard(
+                            icon: Icons.people_outline_rounded,
+                            iconColor: const Color(0xFF8B5CF6),
+                            iconBg: const Color(0xFFEDE9FE),
+                            label: 'Clientes Activos',
+                            value: '342',
+                            trendText: '↗ +15.3%',
+                            trendColor: const Color(0xFF10B981),
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMetricCard(
+                            icon: Icons.inventory_2_outlined,
+                            iconColor: const Color(0xFFEF4444),
+                            iconBg: const Color(0xFFFEE2E2),
+                            label: 'Productos',
+                            value: '68',
+                            trendText: '⚠ 5 bajo stock',
+                            trendColor: const Color(0xFFEF4444),
+                            isDark: isDark,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
 
@@ -284,7 +300,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // Custom Metric Card Horizontal Row
   Widget _buildMetricCard({
     required IconData icon,
     required Color iconColor,
@@ -296,7 +311,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required bool isDark,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      height: 130,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -305,61 +321,72 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ? null
             : [
                 BoxShadow(
-                  color: Colors.black.withAlpha(5),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withAlpha(8),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: isDark ? iconColor.withAlpha(38) : iconBg,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                  ),
+          // Top row: icon + trend badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDark ? iconColor.withAlpha(38) : iconBg,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: GoogleFonts.outfit(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: trendColor.withAlpha(20),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              trendText,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: trendColor,
+                child: Icon(icon, color: iconColor, size: 20),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: trendColor.withAlpha(20),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  trendText,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: trendColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Bottom: value + label
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ],
       ),
@@ -776,14 +803,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                ),
-              ),
-              Text(
-                'Ver todo ›',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

@@ -101,9 +101,15 @@ class ProductListScreen extends ConsumerStatefulWidget {
 
 class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   List<ProductEvent> _customEvents = [];
-  int _currentPage = 1;
-  int _pageSize = 10;
+  int _visibleCount = 10;
+  final ScrollController _scrollController = ScrollController();
   final List<OverlayEntry> _toastEntries = [];
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -111,6 +117,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     Future.microtask(() {
       ref.read(productsProvider.notifier).loadProducts();
     });
+    _scrollController.addListener(_onScroll);
     // Default mock event matching screenshots
     _customEvents = [
       ProductEvent(
@@ -132,6 +139,17 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         isActive: true,
       ),
     ];
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      final filtered = ref.read(productsProvider).filteredProducts;
+      if (_visibleCount < filtered.length) {
+        setState(() {
+          _visibleCount = (_visibleCount + 10).clamp(0, filtered.length);
+        });
+      }
+    }
   }
 
   @override
@@ -176,6 +194,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               color: AppColors.primary,
               onRefresh: () => ref.read(productsProvider.notifier).loadProducts(),
               child: SingleChildScrollView(
+                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +236,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       child: TextField(
                         onChanged: (q) {
                           ref.read(productsProvider.notifier).setSearchQuery(q);
-                          setState(() => _currentPage = 1);
+                          setState(() => _visibleCount = 10);
                         },
                         decoration: InputDecoration(
                           hintText: 'Buscar producto...',
@@ -262,7 +281,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                           PopupMenuButton<String>(
                             onSelected: (catId) {
                               ref.read(productsProvider.notifier).setCategory(catId);
-                              setState(() => _currentPage = 1);
+                              setState(() => _visibleCount = 10);
                             },
                             itemBuilder: (context) => [
                               PopupMenuItem(
@@ -417,20 +436,16 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     else
                       Builder(
                         builder: (context) {
-                          final totalPages = (filtered.length / _pageSize).ceil();
-                          final safePage = _currentPage.clamp(1, totalPages == 0 ? 1 : totalPages);
-                          final startIndex = (safePage - 1) * _pageSize;
-                          final endIndex = (startIndex + _pageSize).clamp(0, filtered.length);
-                          final pageItems = filtered.sublist(startIndex, endIndex);
+                          final visibleItems = filtered.take(_visibleCount).toList();
                           return AnimationLimiter(
                             child: ListView.separated(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               padding: const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: pageItems.length,
+                              itemCount: visibleItems.length,
                               separatorBuilder: (_, _) => const SizedBox(height: 16),
                               itemBuilder: (context, index) {
-                                final product = pageItems[index];
+                                final product = visibleItems[index];
                                 return AnimationConfiguration.staggeredList(
                                   position: index,
                                   duration: const Duration(milliseconds: 400),
@@ -455,97 +470,71 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         },
                       ),
 
-                    // ─── Pagination ───
+                    // ─── Load More / Infinite Scroll Info ───
                     if (filtered.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      Builder(
-                        builder: (context) {
-                          final totalPages = (filtered.length / _pageSize).ceil();
-                          final safePage = _currentPage.clamp(1, totalPages == 0 ? 1 : totalPages);
-                          final startIndex = (safePage - 1) * _pageSize + 1;
-                          final endIndex = (startIndex - 1 + _pageSize).clamp(0, filtered.length);
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              children: [
-                                // Mostrar X registros
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Mostrar:  ',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: [
+                            Text(
+                              'Mostrando ${_visibleCount.clamp(0, filtered.length)} de ${filtered.length} productos',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: isDark ? Colors.white38 : AppColors.grey400,
+                              ),
+                            ),
+                            if (_visibleCount < filtered.length) ...[
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _visibleCount = (_visibleCount + 10).clamp(0, filtered.length);
+                                  });
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withAlpha(8) : AppColors.grey50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark ? Colors.white12 : AppColors.grey200,
                                     ),
-                                    PopupMenuButton<int>(
-                                      onSelected: (val) {
-                                        setState(() {
-                                          _pageSize = val;
-                                          _currentPage = 1;
-                                        });
-                                      },
-                                      itemBuilder: (_) => [5, 10, 20, 50]
-                                          .map((s) => PopupMenuItem(value: s, child: Text('$s', style: GoogleFonts.inter(fontSize: 13))))
-                                          .toList(),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(color: isDark ? Colors.white24 : AppColors.grey300),
-                                          borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.expand_more_rounded,
+                                        size: 18,
+                                        color: isDark ? Colors.white54 : AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Cargar más productos',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white70 : AppColors.primary,
                                         ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text('$_pageSize', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
-                                            const SizedBox(width: 4),
-                                            Icon(Icons.keyboard_arrow_down, size: 14, color: isDark ? Colors.white54 : AppColors.grey500),
-                                          ],
-                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      '  registros',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Mostrando $startIndex a $endIndex de ${filtered.length} registros',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: isDark ? Colors.white38 : AppColors.grey400,
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                // Page controls
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    _pageBtnFn('«', isDark, safePage > 1 ? () => setState(() => _currentPage = 1) : null),
-                                    _pageBtnFn('‹', isDark, safePage > 1 ? () => setState(() => _currentPage--) : null),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(color: isDark ? Colors.white24 : AppColors.grey300),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text('$safePage / $totalPages', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
-                                    ),
-                                    _pageBtnFn('›', isDark, safePage < totalPages ? () => setState(() => _currentPage++) : null),
-                                    _pageBtnFn('»', isDark, safePage < totalPages ? () => setState(() => _currentPage = totalPages) : null),
-                                  ],
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Has visto todos los productos',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white24 : AppColors.grey300,
                                 ),
-                              ],
-                            ),
-                          );
-                        },
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -556,30 +545,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
   }
 
-  Widget _pageBtnFn(String label, bool isDark, VoidCallback? onTap) {
-    final enabled = onTap != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: enabled ? (isDark ? Colors.white10 : Colors.white) : Colors.transparent,
-          border: Border.all(color: isDark ? Colors.white24 : AppColors.grey300),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: enabled
-                ? (isDark ? Colors.white70 : AppColors.textPrimaryLight)
-                : (isDark ? Colors.white38 : AppColors.grey400),
-          ),
-        ),
-      ),
-    );
-  }
+  // _pageBtnFn removed — replaced by infinite scroll + Cargar más
 
   Widget _buildStatsGrid(dynamic state, bool isDark) {
     final products = state.filteredProducts as List<Product>;
@@ -2359,7 +2325,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? (isDark ? const Color(0xFF2A2140) : const Color(0xFFF5F0FF))
@@ -2370,30 +2337,33 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 : (isDark ? Colors.white10 : AppColors.grey200),
             width: 1.5,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
                 color: iconBg,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: iconColor, size: 16),
+              child: Icon(icon, color: iconColor, size: 14),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 label,
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected
                       ? const Color(0xFF7C3AED)
                       : (isDark ? Colors.white70 : AppColors.grey700),
+                  height: 1.2,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -2532,7 +2502,8 @@ class _StatBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -2550,33 +2521,35 @@ class _StatBox extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: isDark ? iconColor.withAlpha(26) : iconBg,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            child: Icon(icon, color: iconColor, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   label,
                   style: GoogleFonts.inter(
-                    fontSize: 11,
+                    fontSize: 10,
                     color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                    height: 1.3,
+                    height: 1.2,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
                   style: GoogleFonts.outfit(
-                    fontSize: isSmallValue ? 13 : 22,
+                    fontSize: isSmallValue ? 12 : 18,
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : AppColors.textPrimaryLight,
                   ),

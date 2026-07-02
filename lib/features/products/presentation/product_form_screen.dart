@@ -794,7 +794,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                 child: Row(
                                   children: [
                                     Expanded(
-                                      flex: 2,
+                                      flex: 3,
                                       child: Text(
                                         'INSUMO',
                                         style: GoogleFonts.inter(
@@ -806,6 +806,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                       ),
                                     ),
                                     Expanded(
+                                      flex: 2,
                                       child: Text(
                                         'CANTIDAD',
                                         textAlign: TextAlign.center,
@@ -817,7 +818,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                         ),
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
                                     Expanded(
+                                      flex: 2,
                                       child: Text(
                                         'UNIDAD',
                                         textAlign: TextAlign.center,
@@ -850,7 +853,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                     children: [
                                       // Insumo name
                                       Expanded(
-                                        flex: 2,
+                                        flex: 3,
                                         child: Row(
                                           children: [
                                             Container(
@@ -878,6 +881,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
                                       // Quantity controls: - qty +
                                       Expanded(
+                                        flex: 2,
                                         child: Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
@@ -928,8 +932,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                         ),
                                       ),
 
+                                      const SizedBox(width: 8),
+
                                       // Unit dropdown
                                       Expanded(
+                                        flex: 2,
                                         child: Container(
                                           height: 28,
                                           padding: const EdgeInsets.symmetric(horizontal: 6),
