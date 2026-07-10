@@ -424,9 +424,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               ),
               const SizedBox(height: 20),
 
-              // ─── Categoría (idCategoriaProducto) ───
+              // ─── Categoría ───
               Text(
-                'Categoría (idCategoriaProducto)',
+                'Categoría',
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
