@@ -70,6 +70,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void clearError() {
     state = state.copyWith(error: null);
   }
+
+  Future<bool> sendPasswordInstructions(String email) async {
+    state = state.copyWith(isLoading: true, error: null);
+    final exists = await _repository.recoverPassword(email);
+    state = state.copyWith(isLoading: false);
+    return exists;
+  }
+
+  Future<bool> resetPassword(String email, String newPassword) async {
+    state = state.copyWith(isLoading: true, error: null);
+    final success = await _repository.resetPassword(email, newPassword);
+    state = state.copyWith(isLoading: false);
+    return success;
+  }
 }
 
 /// Provider global de autenticación

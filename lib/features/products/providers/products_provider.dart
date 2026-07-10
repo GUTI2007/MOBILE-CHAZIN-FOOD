@@ -102,6 +102,7 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
     required double price,
     required String categoryId,
     required String categoryName,
+    String? imageUrl,
   }) async {
     await _repository.createProduct(
       name: name,
@@ -109,6 +110,7 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
       price: price,
       categoryId: categoryId,
       categoryName: categoryName,
+      imageUrl: imageUrl,
     );
     await loadProducts();
   }
@@ -119,6 +121,7 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
     double? price,
     String? categoryId,
     String? categoryName,
+    String? imageUrl,
     bool? isActive,
   }) async {
     await _repository.updateProduct(id,
@@ -127,6 +130,7 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
       price: price,
       categoryId: categoryId,
       categoryName: categoryName,
+      imageUrl: imageUrl,
       isActive: isActive,
     );
     await loadProducts();

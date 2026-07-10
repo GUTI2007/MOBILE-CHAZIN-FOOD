@@ -219,7 +219,7 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
                     // KPI Grid (Capture 1 Style - 2x2 grid layout, overflow-safe)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-                      child: _buildKpis(totalVentas, ticketPromedio, totalDescuentos, filteredOrders.length, cardColor, textPrimary, textSecondary, borderColor, isDark),
+                      child: _buildKpis(filteredOrders, totalVentas, ticketPromedio, totalDescuentos, cardColor, textPrimary, textSecondary, borderColor, isDark),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -268,8 +268,14 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
   }
 
   // --- Capture 1 KPI 2x2 Layout ---
-  Widget _buildKpis(double totalVentas, double ticketPromedio, double totalDescuentos, int totalPedidos, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
+  Widget _buildKpis(List<Order> filteredOrders, double totalVentas, double ticketPromedio, double totalDescuentos, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
     String formatVal(double val) => '\$${val.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
+
+    final uniqueClients = filteredOrders.map((o) => o.cliente).toSet().length;
+    final frecuenciaCompra = uniqueClients == 0 ? 0.0 : filteredOrders.length / uniqueClients;
+
+    double totalSubtotal = filteredOrders.fold(0.0, (sum, item) => sum + item.subtotal);
+    double discountRate = totalSubtotal == 0 ? 0.0 : (totalDescuentos / totalSubtotal) * 100;
 
     return Column(
       children: [
@@ -279,6 +285,7 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
               child: _kpiCard(
                 'Total Ventas',
                 formatVal(totalVentas),
+                'ingresos brutos',
                 Icons.attach_money,
                 isDark ? const Color(0xFF1B3B22) : const Color(0xFFE8F5E9),
                 const Color(0xFF4CAF50),
@@ -292,11 +299,12 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
             const SizedBox(width: 12),
             Expanded(
               child: _kpiCard(
-                'Pedidos Pagados',
-                '$totalPedidos',
-                Icons.check_circle_outline,
-                isDark ? const Color(0xFF1C223D) : const Color(0xFFE8EAF6),
-                const Color(0xFF3F51B5),
+                'Ticket Promedio',
+                formatVal(ticketPromedio),
+                'valor medio por pedido',
+                Icons.trending_up,
+                isDark ? const Color(0xFF1B3B22) : const Color(0xFFE8F5E9),
+                const Color(0xFF4CAF50),
                 cardColor,
                 textPrimary,
                 textSecondary,
@@ -311,11 +319,12 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
           children: [
             Expanded(
               child: _kpiCard(
-                'Ticket Promedio',
-                formatVal(ticketPromedio),
-                Icons.trending_up,
-                isDark ? const Color(0xFF3E1F21) : const Color(0xFFFFEBEE),
-                const Color(0xFFE53935),
+                'Frecuencia de Compra',
+                '${frecuenciaCompra.toStringAsFixed(1)} ped/cli',
+                'pedidos por cliente',
+                Icons.people_outline,
+                isDark ? const Color(0xFF1C223D) : const Color(0xFFE8EAF6),
+                const Color(0xFF3F51B5),
                 cardColor,
                 textPrimary,
                 textSecondary,
@@ -326,8 +335,9 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
             const SizedBox(width: 12),
             Expanded(
               child: _kpiCard(
-                'Desc. Otorgados',
-                formatVal(totalDescuentos),
+                'Tasa de Descuento',
+                '${discountRate.toStringAsFixed(1)}%',
+                '${formatVal(totalDescuentos)} en desc.',
                 Icons.shopping_bag_outlined,
                 isDark ? const Color(0xFF3B3A1C) : const Color(0xFFFFFDE7),
                 const Color(0xFFFBC02D),
@@ -344,9 +354,9 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
     );
   }
 
-  Widget _kpiCard(String title, String value, IconData icon, Color bgColor, Color iconColor, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
+  Widget _kpiCard(String title, String value, String subtitle, IconData icon, Color bgColor, Color iconColor, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -360,17 +370,17 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, size: 20, color: iconColor),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, size: 18, color: iconColor),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: textPrimary),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: textPrimary),
             ),
           ),
           const SizedBox(height: 2),
@@ -378,7 +388,14 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, color: textSecondary, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 11, color: textPrimary, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 9, color: textSecondary),
           ),
         ],
       ),

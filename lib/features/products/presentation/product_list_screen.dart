@@ -565,21 +565,23 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               Expanded(
                 child: _StatBox(
                   icon: Icons.inventory_2_outlined,
-                  iconColor: const Color(0xFF3B82F6),
-                  iconBg: const Color(0xFFDBEAFE),
-                  label: 'Total\nProductos',
+                  iconColor: const Color(0xFF3F51B5),
+                  iconBg: isDark ? const Color(0xFF1C223D) : const Color(0xFFE8EAF6),
+                  label: 'Total Productos',
                   value: totalProducts.toString(),
+                  subtitle: 'en catálogo',
                   isDark: isDark,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _StatBox(
-                  icon: Icons.star_rounded,
-                  iconColor: const Color(0xFFF59E0B),
-                  iconBg: const Color(0xFFFEF3C7),
+                  icon: Icons.star_outline_rounded,
+                  iconColor: const Color(0xFF4CAF50),
+                  iconBg: isDark ? const Color(0xFF1B3B22) : const Color(0xFFE8F5E9),
                   label: 'Más Vendido',
                   value: bestSeller?.name ?? '-',
+                  subtitle: '${bestSeller?.totalSold ?? 0} ventas',
                   isSmallValue: true,
                   isDark: isDark,
                 ),
@@ -592,10 +594,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               Expanded(
                 child: _StatBox(
                   icon: Icons.trending_up_rounded,
-                  iconColor: AppColors.success,
-                  iconBg: AppColors.successLight,
+                  iconColor: const Color(0xFF4CAF50),
+                  iconBg: isDark ? const Color(0xFF1B3B22) : const Color(0xFFE8F5E9),
                   label: 'Total Vendidos',
                   value: totalSold.toString(),
+                  subtitle: 'unidades',
                   isDark: isDark,
                 ),
               ),
@@ -603,10 +606,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               Expanded(
                 child: _StatBox(
                   icon: Icons.error_outline_rounded,
-                  iconColor: AppColors.error,
-                  iconBg: AppColors.errorLight,
+                  iconColor: const Color(0xFFE53935),
+                  iconBg: isDark ? const Color(0xFF3E1F21) : const Color(0xFFFFEBEE),
                   label: 'Bajo Stock',
                   value: lowStock.toString(),
+                  subtitle: 'requieren atención',
                   isDark: isDark,
                 ),
               ),
@@ -2486,6 +2490,7 @@ class _StatBox extends StatelessWidget {
   final Color iconBg;
   final String label;
   final String value;
+  final String subtitle;
   final bool isSmallValue;
   final bool isDark;
 
@@ -2495,6 +2500,7 @@ class _StatBox extends StatelessWidget {
     required this.iconBg,
     required this.label,
     required this.value,
+    required this.subtitle,
     this.isSmallValue = false,
     required this.isDark,
   });
@@ -2502,8 +2508,8 @@ class _StatBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      height: 80,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -2529,7 +2535,7 @@ class _StatBox extends StatelessWidget {
             ),
             child: Icon(icon, color: iconColor, size: 18),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2540,18 +2546,28 @@ class _StatBox extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                    height: 1.2,
+                    fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   value,
                   style: GoogleFonts.outfit(
-                    fontSize: isSmallValue ? 12 : 18,
+                    fontSize: isSmallValue ? 11 : 16,
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    color: isDark ? Colors.white38 : AppColors.textSecondaryLight,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

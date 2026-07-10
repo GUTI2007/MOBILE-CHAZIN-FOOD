@@ -1,19 +1,553 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_dimens.dart';
-import '../../../core/constants/app_strings.dart';
-import '../../../core/utils/helpers.dart';
-import '../../../shared/widgets/app_button.dart';
-import '../providers/auth_provider.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../providers/auth_provider.dart';
+import 'widgets/cross_label_input_field.dart';
+import 'widgets/wave_widget.dart';
+import 'forgot_password_screen.dart';
 
-/// Painter para la rejilla de puntos (grid de 8x8) en la esquina superior derecha
-class DotGridPainter extends CustomPainter {
+class LoginScreen extends ConsumerStatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  
+  bool _showPassword = false;
+  late AnimationController _chefAnimationController;
+  late Animation<double> _chefBounceAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _chefAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1400),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _chefBounceAnimation = Tween<double>(begin: 0.0, end: -6.0).animate(
+      CurvedAnimation(
+        parent: _chefAnimationController,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _chefAnimationController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    ref.read(authProvider.notifier).clearError();
+    
+    final success = await ref.read(authProvider.notifier).login(
+      _emailController.text,
+      _passwordController.text,
+    );
+
+    if (success && mounted) {
+      CustomToast.show(
+        context,
+        title: '¡Bienvenido!',
+        message: 'Inicio de sesión exitoso.',
+      );
+    } else if (mounted) {
+      final error = ref.read(authProvider).error;
+      CustomToast.show(
+        context,
+        title: 'Error de autenticación',
+        message: error ?? 'Correo o contraseña incorrectos.',
+        isError: true,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final isLoading = authState.isLoading;
+    const brandColor = Color(0xFFFF3E55); // Strawberry Red exact color
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          // ─── 1. Fondo de color rosa muy claro y difuminado, casi blanco ───
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFFFFF9FA),
+            ),
+          ),
+          // ─── 2. Círculos de gradiente difuminados (Blur) ───
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 350,
+              height: 350,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    brandColor.withOpacity(0.15),
+                    brandColor.withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            left: -100,
+            child: Container(
+              width: 350,
+              height: 350,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFF30475E).withOpacity(0.15),
+                    const Color(0xFF30475E).withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // ─── 3. Ola decorativa inferior ───
+          const Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 120,
+            child: WaveWidget(),
+          ),
+
+          // ─── 5. Contenido Principal ───
+          SafeArea(
+            child: Align(
+              alignment: isKeyboardOpen ? Alignment.topCenter : Alignment.center,
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  child: Column(
+                    mainAxisAlignment: isKeyboardOpen ? MainAxisAlignment.start : MainAxisAlignment.center,
+                    children: [
+                      if (!isKeyboardOpen) ...[
+                        const SizedBox(height: 15),
+                        // ─── Logo Chazin Food personalizado con círculos concéntricos y cuadrícula detrás ───
+                        Stack(
+                          alignment: Alignment.center,
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Cuadrícula de puntos grises posicionado ÚNICAMENTE en la zona del logotipo
+                            SizedBox(
+                              width: 320,
+                              height: 130,
+                              child: CustomPaint(
+                                painter: _DotGridBehindLogoPainter(
+                                  color: const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                            ),
+                            // Círculo concéntrico exterior difuminado (RadialGradient idéntico al fondo)
+                            Container(
+                              width: 280,
+                              height: 280,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    brandColor.withOpacity(0.24),
+                                    brandColor.withOpacity(0.0),
+                                  ],
+                                  stops: const [0.45, 1.0],
+                                ),
+                              ),
+                            ),
+                            // Círculo del logotipo principal (Ajustado a 120) con el Gorro de Chef en la parte superior derecha
+                            Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  width: 136,
+                                  height: 136,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: brandColor.withOpacity(0.12),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.06),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: ClipOval(
+                                      child: Image.asset(
+                                        'assets/chazin_logo.png',
+                                        width: 92,
+                                        height: 92,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Icon(
+                                            Icons.restaurant_rounded,
+                                            size: 48,
+                                            color: brandColor,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: -4,
+                                  right: -4,
+                                  child: AnimatedBuilder(
+                                    animation: _chefBounceAnimation,
+                                    builder: (context, child) {
+                                      return Transform.translate(
+                                        offset: Offset(0, _chefBounceAnimation.value),
+                                        child: child,
+                                      );
+                                    },
+                                    child: Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: brandColor,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black12,
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: CustomPaint(
+                                        painter: ChefHatPainter(),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // Título de la App (Poppins con color exacto)
+                      Text(
+                        'Chazin Food',
+                        style: GoogleFonts.poppins(
+                          fontSize: 42,
+                          fontWeight: FontWeight.bold,
+                          color: brandColor,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+
+                      // Subtítulo con sparkles emoji custom
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CustomPaint(
+                            size: const Size(20, 20),
+                            painter: SparklePainter(color: brandColor),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Sistema de Gestión',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF30475E),
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          CustomPaint(
+                            size: const Size(20, 20),
+                            painter: SparklePainter(color: brandColor),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ─── Card Principal con Formulario ───
+                      Container(
+                        width: double.infinity,
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Línea superior de marca
+                            Container(
+                              height: 6,
+                              width: double.infinity,
+                              decoration: const BoxDecoration(
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(24),
+                                  topRight: Radius.circular(24),
+                                ),
+                                color: brandColor,
+                              ),
+                            ),
+                            
+                            // Cabecera que simula el tab activo de Iniciar Sesión (Sin pestaña "Registrarse")
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFF2F3),
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: brandColor,
+                                    width: 2.0,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.login_rounded,
+                                    color: brandColor,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Iniciar Sesión',
+                                    style: GoogleFonts.poppins(
+                                      color: brandColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28.0),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Campo Correo
+                                    CrossLabelInputField(
+                                      label: 'Correo Electrónico',
+                                      prefixIcon: Icons.mail_outline_rounded,
+                                      hintText: 'usuario@chazinfood.com',
+                                      controller: _emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                      validator: (value) {
+                                        if (value == null || value.trim().isEmpty) {
+                                          return 'Campo requerido';
+                                        }
+                                        final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+                                        if (!emailRegex.hasMatch(value.trim())) {
+                                          return 'Ingresa un correo válido';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 20),
+
+                                    // Campo Contraseña
+                                    CrossLabelInputField(
+                                      label: 'Contraseña',
+                                      prefixIcon: Icons.lock_outline_rounded,
+                                      hintText: '........',
+                                      controller: _passwordController,
+                                      obscureText: !_showPassword,
+                                      keyboardType: TextInputType.visiblePassword,
+                                      suffixIcon: IconButton(
+                                        icon: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            Icon(
+                                              _showPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                              color: Colors.white,
+                                              size: 24,
+                                            ),
+                                            Icon(
+                                              _showPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                              color: Colors.grey.shade600,
+                                              size: 18,
+                                            ),
+                                          ],
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _showPassword = !_showPassword;
+                                          });
+                                        },
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Campo requerido';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 28),
+
+                                    // Botón Iniciar Sesión con FittedBox para prevenir desbordamientos
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 54,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(16),
+                                          color: brandColor,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: brandColor.withOpacity(0.35),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ElevatedButton(
+                                          onPressed: isLoading ? null : _handleLogin,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            shadowColor: Colors.transparent,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                          ),
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: isLoading
+                                                ? Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      const SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child: CircularProgressIndicator(
+                                                          color: Colors.white,
+                                                          strokeWidth: 2.5,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 12),
+                                                      Text(
+                                                        'Ingresando...',
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 16,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  )
+                                                : Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      const Icon(Icons.login_rounded, size: 20, color: Colors.white),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        'Iniciar Sesión',
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 16,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+
+                                    // Olvidaste Contraseña
+                                    Center(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          if (!isLoading) {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => const ForgotPasswordScreen(),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        child: Text(
+                                          '¿Olvidaste tu contraseña?',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: brandColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── WIDGETS DE SOPORTE PERSONALIZADOS ───
+
+/// Rejilla de puntos decorativa detrás del logo
+class _DotGridBehindLogoPainter extends CustomPainter {
   final Color color;
-
-  DotGridPainter({required this.color});
+  _DotGridBehindLogoPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -21,14 +555,19 @@ class DotGridPainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.fill;
 
-    const double spacing = 14.0;
-    const double radius = 2.0;
+    const double spacing = 30.0; // Espaciado ampliado para que sobresalga
+    const double radius = 3.5;   // Tamaño exacto
+    const int rows = 8;
+    const int cols = 10;         // Más columnas para que sea más ancho
 
-    // Dibujar cuadrícula de 8x8
-    for (int i = 0; i < 8; i++) {
-      for (int j = 0; j < 8; j++) {
+    // Centrar la cuadrícula dentro de la caja de tamaño asignado
+    double startX = (size.width - (cols - 1) * spacing) / 2;
+    double startY = (size.height - (rows - 1) * spacing) / 2;
+
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
         canvas.drawCircle(
-          Offset(size.width - 24 - (i * spacing), 24 + (j * spacing)),
+          Offset(startX + c * spacing, startY + r * spacing),
           radius,
           paint,
         );
@@ -40,793 +579,90 @@ class DotGridPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
-
-  @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends ConsumerState<LoginScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _bounceController;
-  late final Animation<double> _bounceAnimation;
-  
-  // Login Form Keys & Controllers
-  final _loginFormKey = GlobalKey<FormState>();
-  final _loginEmailController = TextEditingController();
-  final _loginPasswordController = TextEditingController();
-  bool _loginObscure = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _bounceController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    
-    _bounceAnimation = Tween<double>(begin: 0.0, end: -8.0).animate(
-      CurvedAnimation(parent: _bounceController, curve: Curves.easeInOutSine),
-    );
-  }
-
-  @override
-  void dispose() {
-    _bounceController.dispose();
-    _loginEmailController.dispose();
-    _loginPasswordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleLogin() async {
-    if (!_loginFormKey.currentState!.validate()) return;
-
-    ref.read(authProvider.notifier).clearError();
-    final success = await ref.read(authProvider.notifier).login(
-          _loginEmailController.text,
-          _loginPasswordController.text,
-        );
-
-    if (success && mounted) {
-      CustomToast.show(
-        context,
-        title: 'Sesión iniciada',
-        message: '¡Bienvenido al sistema!',
-      );
-    }
-
-    if (!success && mounted) {
-      final error = ref.read(authProvider).error;
-      if (error != null) {
-        CustomToast.show(
-          context,
-          title: 'Error de inicio de sesión',
-          message: error,
-          isError: true,
-        );
-      }
-    }
-  }
-
-  // Deleted unused _handleRegister method
-
-  @override
-  Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: isDark
-              ? AppColors.darkGradient
-              : const LinearGradient(
-                  colors: [
-                    Color(0xFFFCF8F7), // Soft cream/pink
-                    Color(0xFFF3ECEB), // Slightly darker soft pink
-                    Color(0xFFEAEAEE), // Soft greyish blue
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // ─── Dotted Grid Background ───
-              if (!isDark)
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: DotGridPainter(
-                      color: AppColors.primary.withAlpha(20),
-                    ),
-                  ),
-                ),
-
-              // ─── Main Content ───
-              Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg, vertical: AppDimens.md),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: AppDimens.md),
-                      // ─── Logo Chazin Food personalizado estilo Figma ───
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 104,
-                            height: 104,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primary.withAlpha(51), width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withAlpha(10),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(45),
-                                child: Image.asset(
-                                  'assets/chazin_logo.png',
-                                  width: 90,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          ),
-                          // Gorro de chef badge sobrepuesto con animación de rebote
-                          Positioned(
-                            top: -2,
-                            right: -2,
-                            child: AnimatedBuilder(
-                              animation: _bounceAnimation,
-                              builder: (context, child) {
-                                return Transform.translate(
-                                  offset: Offset(0, _bounceAnimation.value),
-                                  child: child,
-                                );
-                              },
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFE25858),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: CustomPaint(
-                                    size: const Size(16, 16),
-                                    painter: ChefHatPainter(color: Colors.white),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppDimens.lg),
-
-                      // ─── Title & Subtitle ───
-                      Text(
-                        AppStrings.appName,
-                        style: GoogleFonts.outfit(
-                          fontSize: 34,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '✨ Sistema de Gestión ✨',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                        ),
-                      ),
-                      const SizedBox(height: AppDimens.xl),
-
-                      // ─── Card Container con Login ───
-                      Container(
-                        constraints: const BoxConstraints(maxWidth: 420), // Exact mobile size simulation on web
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.surfaceDark : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(isDark ? 51 : 13),
-                              blurRadius: 24,
-                              offset: const Offset(0, 12),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: isDark ? Colors.white.withAlpha(26) : Colors.black.withAlpha(5),
-                            width: 1,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Red top line to match the Figma mockup exactly
-                              Container(
-                                height: 4,
-                                width: double.infinity,
-                                color: AppColors.primary,
-                              ),
-                              // ─── Custom Tab Header (Single Tab layout) ───
-                              Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: isDark ? Colors.white10 : Colors.black.withAlpha(10),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                ),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      bottom: BorderSide(
-                                        color: AppColors.primary,
-                                        width: 2.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.login_rounded,
-                                        size: 16,
-                                        color: AppColors.primary,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Iniciar Sesión',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(AppDimens.lg),
-                                child: _buildLoginTab(authState, isDark),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppDimens.md),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── LOGIN VIEW ───
-  Widget _buildLoginTab(AuthState authState, bool isDark) {
-    return Form(
-      key: _loginFormKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Correo Electrónico',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : const Color(0xFF2D2E33),
-            ),
-          ),
-          const SizedBox(height: 6),
-          _customInput(
-            hint: 'cliente@chazinfood.com',
-            controller: _loginEmailController,
-            validator: Validators.email,
-            keyboardType: TextInputType.emailAddress,
-            prefixIcon: const Icon(Icons.email_outlined, size: 20),
-            isDark: isDark,
-          ),
-          const SizedBox(height: AppDimens.md),
-          Text(
-            'Contraseña',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : const Color(0xFF2D2E33),
-            ),
-          ),
-          const SizedBox(height: 6),
-          _customInput(
-            hint: '••••••••',
-            controller: _loginPasswordController,
-            validator: Validators.password,
-            obscureText: _loginObscure,
-            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _loginObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                size: 20,
-              ),
-              onPressed: () => setState(() => _loginObscure = !_loginObscure),
-            ),
-            isDark: isDark,
-          ),
-          const SizedBox(height: AppDimens.lg),
-          AppButton(
-            text: 'Iniciar Sesión',
-            onPressed: _handleLogin,
-            isLoading: authState.isLoading,
-            icon: Icons.login_rounded,
-          ),
-          const SizedBox(height: AppDimens.md),
-          Center(
-            child: TextButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const _RecoverPasswordScreen()),
-                );
-              },
-              style: TextButton.styleFrom(padding: EdgeInsets.zero),
-              child: Text(
-                '¿Olvidaste tu contraseña?',
-                style: GoogleFonts.inter(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Deleted unused _buildRegisterTab view
-
-  // ─── Helper para Input con Styling Exacto del Figma ───
-  Widget _customInput({
-    required String hint,
-    required TextEditingController controller,
-    String? Function(String?)? validator,
-    bool obscureText = false,
-    Widget? prefixIcon,
-    Widget? suffixIcon,
-    TextInputType? keyboardType,
-    required bool isDark,
-  }) {
-    return TextFormField(
-      controller: controller,
-      validator: validator,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      style: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: Colors.white, // White color text entered by user as in the mockup
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.inter(
-          color: isDark ? Colors.white38 : const Color(0xFFE2E8F0),
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-        ),
-        filled: true,
-        fillColor: isDark 
-            ? AppColors.cardDark 
-            : const Color(0xFFBFC2D0), // Exact grey background color from Figma mockups
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white10 : const Color(0xFFBFC2D0),
-            width: 1,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white10 : const Color(0xFFBFC2D0),
-            width: 1,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: AppColors.primary,
-            width: 1.5,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 1,
-          ),
-        ),
-        prefixIcon: prefixIcon,
-        prefixIconColor: WidgetStateColor.resolveWith((states) {
-          if (states.contains(WidgetState.focused)) {
-            return AppColors.primary;
-          }
-          return isDark ? Colors.white38 : const Color(0xFF7E818C);
-        }),
-        suffixIcon: suffixIcon,
-        suffixIconColor: WidgetStateColor.resolveWith((states) {
-          if (states.contains(WidgetState.focused)) {
-            return AppColors.primary;
-          }
-          return isDark ? Colors.white38 : const Color(0xFF7E818C);
-        }),
-      ),
-    );
-  }
-}
-
-// ════════════════════════════════════════════
-// RECOVER PASSWORD SCREEN (inline private)
-// ════════════════════════════════════════════
-
-class _RecoverPasswordScreen extends StatefulWidget {
-  const _RecoverPasswordScreen();
-
-  @override
-  State<_RecoverPasswordScreen> createState() => _RecoverPasswordScreenState();
-}
-
-class _RecoverPasswordScreenState extends State<_RecoverPasswordScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  bool _sent = false;
-  bool _loading = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleSend() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (mounted) {
-      setState(() {
-        _loading = false;
-        _sent = true;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8F9FB),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        leadingWidth: 280,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.arrow_back_rounded,
-                  color: isDark ? Colors.white70 : const Color(0xFF475569),
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    'Volver al inicio de sesión',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white70 : const Color(0xFF475569),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        child: _sent ? _buildSentState(isDark) : _buildForm(isDark),
-      ),
-    );
-  }
-
-  Widget _buildForm(bool isDark) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 24),
-          // Red circular mail icon badge
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE25858),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFE25858).withAlpha(60),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.email_rounded,
-              color: Colors.white,
-              size: 36,
-            ),
-          ),
-          const SizedBox(height: 28),
-          // Title
-          Text(
-            '¿Olvidaste tu contraseña?',
-            style: GoogleFonts.outfit(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : const Color(0xFF1E293B),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          // Subtitle
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
-              'Ingresa tu correo electrónico y te enviaremos las instrucciones para restablecer tu contraseña.',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 32),
-          // Email label
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Correo Electrónico',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white70 : const Color(0xFF334155),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Email field
-          TextFormField(
-            controller: _emailController,
-            validator: Validators.email,
-            keyboardType: TextInputType.emailAddress,
-            style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white : const Color(0xFF1E293B)),
-            decoration: InputDecoration(
-              hintText: 'tu@correo.com',
-              hintStyle: GoogleFonts.inter(
-                color: isDark ? Colors.white30 : const Color(0xFFAEB5C0),
-                fontSize: 14,
-              ),
-              prefixIcon: Icon(
-                Icons.email_outlined,
-                size: 20,
-                color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-              ),
-              filled: true,
-              fillColor: isDark ? AppColors.surfaceDark : Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE25858), width: 1.5),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFEF4444)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Send button
-          AppButton(
-            text: 'Enviar instrucciones',
-            onPressed: _handleSend,
-            isLoading: _loading,
-            icon: Icons.send_rounded,
-          ),
-          const SizedBox(height: 24),
-          // Footer link
-          GestureDetector(
-            onTap: () {
-              if (!_loading) _handleSend();
-            },
-            child: RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                ),
-                children: [
-                  const TextSpan(text: '¿No recibiste el correo? '),
-                  TextSpan(
-                    text: 'Intentar nuevamente',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFE25858),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSentState(bool isDark) {
-    return Column(
-      children: [
-        const SizedBox(height: 48),
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: AppColors.success.withAlpha(26),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.mark_email_read_rounded,
-            size: 40,
-            color: AppColors.success,
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          AppStrings.linkSent,
-          style: GoogleFonts.outfit(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xFF1E293B),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text(
-            AppStrings.linkSentDesc,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: isDark ? Colors.white54 : const Color(0xFF64748B),
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 32),
-        AppButton(
-          text: AppStrings.backToLogin,
-          onPressed: () => Navigator.of(context).pop(),
-          isOutlined: true,
-        ),
-      ],
-    );
-  }
-}
-
-class ChefHatPainter extends CustomPainter {
+/// Sparkles (✨ Unicode Emoji Style with 3 stars) Custom Painter
+class SparklePainter extends CustomPainter {
   final Color color;
+  SparklePainter({required this.color});
 
-  ChefHatPainter({required this.color});
+  void _drawSparkle(Canvas canvas, Offset center, double radius, Paint paint) {
+    final path = Path();
+    double cx = center.dx;
+    double cy = center.dy;
+    
+    path.moveTo(cx, cy - radius); 
+    path.quadraticBezierTo(cx, cy, cx + radius, cy); 
+    path.quadraticBezierTo(cx, cy, cx, cy + radius); 
+    path.quadraticBezierTo(cx, cy, cx - radius, cy); 
+    path.quadraticBezierTo(cx, cy, cx, cy - radius); 
+    path.close();
+    
+    canvas.drawPath(path, paint);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Estrella principal grande en el centro-izquierda (✨)
+    _drawSparkle(canvas, Offset(size.width * 0.45, size.height * 0.55), size.width * 0.32, paint);
+    // Estrella mediana en la parte superior derecha
+    _drawSparkle(canvas, Offset(size.width * 0.8, size.height * 0.25), size.width * 0.18, paint);
+    // Estrella pequeña abajo
+    _drawSparkle(canvas, Offset(size.width * 0.18, size.height * 0.32), size.width * 0.12, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Chef Hat Custom Painter
+class ChefHatPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
+      ..strokeWidth = 2.2
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
     final path = Path();
-    final double w = size.width;
-    final double h = size.height;
+    double w = size.width;
+    double h = size.height;
 
-    // Start bottom left of the puffs
-    path.moveTo(w * 0.28, h * 0.65);
+    // 1. Banda inferior (rectángulo outline)
+    path.addRRect(RRect.fromRectAndRadius(
+      Rect.fromLTRB(w * 0.28, h * 0.65, w * 0.72, h * 0.77),
+      const Radius.circular(2),
+    ));
+
+    // 2. Nube superior (los tres domos outline sin cruces internos)
+    final domesPath = Path();
+    domesPath.moveTo(w * 0.28, h * 0.65);
     
-    // Left puff
-    path.cubicTo(
-      w * 0.12, h * 0.55,
-      w * 0.15, h * 0.35,
-      w * 0.33, h * 0.38,
+    // Domo izquierdo
+    domesPath.cubicTo(
+      w * 0.12, h * 0.52,
+      w * 0.24, h * 0.35,
+      w * 0.40, h * 0.45,
     );
-    
-    // Center puff
-    path.cubicTo(
-      w * 0.38, h * 0.18,
-      w * 0.62, h * 0.18,
-      w * 0.67, h * 0.38,
+    // Domo central
+    domesPath.cubicTo(
+      w * 0.42, h * 0.22,
+      w * 0.58, h * 0.22,
+      w * 0.60, h * 0.45,
     );
-    
-    // Right puff
-    path.cubicTo(
-      w * 0.85, h * 0.35,
-      w * 0.88, h * 0.55,
+    // Domo derecho
+    domesPath.cubicTo(
+      w * 0.76, h * 0.35,
+      w * 0.88, h * 0.52,
       w * 0.72, h * 0.65,
     );
-    
-    canvas.drawPath(path, paint);
 
-    // Draw the band at the bottom
-    final bandPath = Path()
-      ..moveTo(w * 0.28, h * 0.65)
-      ..lineTo(w * 0.72, h * 0.65)
-      ..lineTo(w * 0.70, h * 0.82)
-      ..lineTo(w * 0.30, h * 0.82)
-      ..close();
-      
-    canvas.drawPath(bandPath, paint);
+    canvas.drawPath(path, paint);
+    canvas.drawPath(domesPath, paint);
   }
 
   @override

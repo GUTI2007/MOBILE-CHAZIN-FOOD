@@ -96,11 +96,7 @@ class _DailyRevenueChartState extends State<DailyRevenueChart> {
                                   height: max(6.0, heightPercent * 90),
                                   width: 14,
                                   decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFFF05454), Color(0xFFC92C2C)],
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                    ),
+                                    color: const Color(0xFF52B788),
                                     borderRadius: BorderRadius.circular(3),
                                   ),
                                 ),
@@ -163,7 +159,7 @@ class _DailyRevenueChartState extends State<DailyRevenueChart> {
             const SizedBox(height: 4),
             Text(
               'Ingresos : \$${item.ventas.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFC92C2C)),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
             ),
           ],
         ),
@@ -304,7 +300,7 @@ class _DailyOrdersChartState extends State<DailyOrdersChart> {
               const SizedBox(height: 4),
               Text(
                 'Pedidos : ${item.pedidos}',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF30475E)),
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF4361EE)),
               ),
             ],
           ),
@@ -327,13 +323,13 @@ class LineChartPainter extends CustomPainter {
     if (points.isEmpty) return;
 
     final paintLine = Paint()
-      ..color = const Color(0xFF30475E)
+      ..color = const Color(0xFF4361EE)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final paintDot = Paint()
-      ..color = const Color(0xFF30475E)
+      ..color = const Color(0xFF4361EE)
       ..style = PaintingStyle.fill;
 
     final paintGrid = Paint()
@@ -387,7 +383,7 @@ class LineChartPainter extends CustomPainter {
 
       // Selected outer glow ring
       final paintGlow = Paint()
-        ..color = const Color(0xFF30475E).withAlpha(40)
+        ..color = const Color(0xFF4361EE).withAlpha(40)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(selectedPt, 8.0, paintGlow);
     }
@@ -402,7 +398,7 @@ class LineChartPainter extends CustomPainter {
         final textPainter = TextPainter(
           text: TextSpan(
             text: points[i].toInt().toString(),
-            style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: isDark ? AppColors.textPrimaryDark : const Color(0xFF30475E)),
+            style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: isDark ? AppColors.textPrimaryDark : const Color(0xFF4361EE)),
           ),
           textDirection: TextDirection.ltr,
         );
@@ -513,7 +509,13 @@ class _TopProductsChartState extends State<TopProductsChart> {
                                       width: (constraints.maxWidth - 130) * percent,
                                       height: 10,
                                       decoration: BoxDecoration(
-                                        color: isSelected ? const Color(0xFFF05454) : (isDark ? AppColors.primaryLight : const Color(0xFF30475E)),
+                                        color: isSelected ? const Color(0xFF1B4332) : const [
+                                          Color(0xFF2D6A4F),
+                                          Color(0xFF40916C),
+                                          Color(0xFF52B788),
+                                          Color(0xFF74C69D),
+                                          Color(0xFF95D5B2),
+                                        ][index.clamp(0, 4)],
                                         borderRadius: BorderRadius.circular(5),
                                       ),
                                     ),
@@ -585,7 +587,7 @@ class _TopProductsChartState extends State<TopProductsChart> {
               const SizedBox(height: 2),
               Text(
                 'Vendidos: ${item.cantidad} und.',
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFC92C2C)),
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
               ),
             ],
           ),
@@ -695,7 +697,7 @@ class _PaymentMethodsChartState extends State<PaymentMethodsChart> {
                 children: widget.data.asMap().entries.map((entry) {
                   int index = entry.key;
                   var item = entry.value;
-                  Color color = index == 0 ? const Color(0xFF30475E) : const Color(0xFFF05454);
+                  Color color = index == 0 ? const Color(0xFF52B788) : const Color(0xFF4361EE);
                   bool isSelected = _selectedIndex == index;
 
                   return Padding(
@@ -783,7 +785,7 @@ class DonutPainter extends CustomPainter {
       bool isSelected = selectedIndex == i;
 
       final paint = Paint()
-        ..color = i == 0 ? const Color(0xFF30475E) : const Color(0xFFF05454)
+        ..color = i == 0 ? const Color(0xFF52B788) : const Color(0xFF4361EE)
         ..style = PaintingStyle.stroke
         ..strokeWidth = isSelected ? 18.0 : 13.0; // thicken slice when selected
 

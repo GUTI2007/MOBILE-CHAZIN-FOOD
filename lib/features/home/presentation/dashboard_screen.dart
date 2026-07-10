@@ -94,18 +94,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // ─── Acceso Rápido ───
-                    Text(
-                      'Acceso Rápido',
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildQuickActionsGrid(isDark),
-                    const SizedBox(height: 20),
+
 
                     // ─── Metric Cards (2×2 Grid) ───
                     Row(
@@ -194,111 +183,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // Quick Action Grid 2x2
-  Widget _buildQuickActionsGrid(bool isDark) {
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.25,
-      children: [
-        _quickActionItem(
-          icon: Icons.shopping_cart_rounded,
-          iconColor: const Color(0xFF1E3A8A),
-          iconBg: const Color(0xFFEFF6FF),
-          title: 'Compras',
-          subtitle: 'Gestión de insumos',
-          isDark: isDark,
-        ),
-        _quickActionItem(
-          icon: Icons.trending_up_rounded,
-          iconColor: const Color(0xFFDC2626),
-          iconBg: const Color(0xFFFEF2F2),
-          title: 'Ventas',
-          subtitle: 'Punto de venta',
-          isDark: isDark,
-        ),
-        _quickActionItem(
-          icon: Icons.people_rounded,
-          iconColor: const Color(0xFF8B5CF6),
-          iconBg: const Color(0xFFF5F3FF),
-          title: 'Usuarios',
-          subtitle: 'Administrar accesos',
-          isDark: isDark,
-        ),
-        _quickActionItem(
-          icon: Icons.settings_rounded,
-          iconColor: const Color(0xFF475569),
-          iconBg: const Color(0xFFF1F5F9),
-          title: 'Configuración',
-          subtitle: 'Roles y permisos',
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
 
-  Widget _quickActionItem({
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBg,
-    required String title,
-    required String subtitle,
-    required bool isDark,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isDark ? Border.all(color: Colors.white10) : null,
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withAlpha(5),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isDark ? iconColor.withAlpha(38) : iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              color: isDark ? Colors.white : AppColors.textPrimaryLight,
-            ),
-          ),
-          Text(
-            subtitle,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              color: isDark ? Colors.white38 : AppColors.textSecondaryLight,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMetricCard({
     required IconData icon,
@@ -331,7 +216,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Top row: icon + trend badge
+          // Top row: icon + trend badge (wrapped in Flexible/FittedBox to prevent horizontal overflows)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,18 +230,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: trendColor.withAlpha(20),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  trendText,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: trendColor,
+              const SizedBox(width: 4),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: trendColor.withAlpha(20),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      trendText,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: trendColor,
+                      ),
+                    ),
                   ),
                 ),
               ),

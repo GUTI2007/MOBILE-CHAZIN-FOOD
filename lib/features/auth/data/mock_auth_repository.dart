@@ -47,6 +47,18 @@ class MockAuthRepository {
     await Future.delayed(const Duration(milliseconds: 1500));
     return _users.any((u) => u.user.email == email.trim().toLowerCase());
   }
+
+  /// Simula restablecimiento de contraseña
+  Future<bool> resetPassword(String email, String newPassword) async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    final cleanEmail = email.trim().toLowerCase();
+    final match = _users.where((u) => u.user.email == cleanEmail);
+    if (match.isNotEmpty) {
+      match.first.password = newPassword;
+      return true;
+    }
+    return false;
+  }
 }
 
 /// Resultado de autenticación
@@ -74,6 +86,6 @@ class AuthResult {
 
 class _MockUser {
   final User user;
-  final String password;
-  const _MockUser({required this.user, required this.password});
+  String password;
+  _MockUser({required this.user, required this.password});
 }

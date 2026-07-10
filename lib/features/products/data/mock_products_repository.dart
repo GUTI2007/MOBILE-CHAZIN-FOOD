@@ -383,6 +383,7 @@ class MockProductsRepository {
     required double price,
     required String categoryId,
     required String categoryName,
+    String? imageUrl,
   }) async {
     await Future.delayed(const Duration(milliseconds: 800));
     final product = Product(
@@ -392,6 +393,7 @@ class MockProductsRepository {
       price: price,
       categoryId: categoryId,
       categoryName: categoryName,
+      imageUrl: imageUrl,
       isActive: true,
       createdAt: DateTime.now(),
     );
@@ -406,6 +408,7 @@ class MockProductsRepository {
     double? price,
     String? categoryId,
     String? categoryName,
+    String? imageUrl,
     bool? isActive,
   }) async {
     await Future.delayed(const Duration(milliseconds: 800));
@@ -418,6 +421,7 @@ class MockProductsRepository {
       price: price,
       categoryId: categoryId,
       categoryName: categoryName,
+      imageUrl: imageUrl,
       isActive: isActive,
     );
     _products[index] = updated;

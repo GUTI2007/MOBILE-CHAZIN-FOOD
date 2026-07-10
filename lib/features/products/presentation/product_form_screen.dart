@@ -1,6 +1,9 @@
+import 'dart:io' show File;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/widgets/custom_toast.dart';
@@ -24,6 +27,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   String? _selectedCategoryName;
   bool _isActive = true;
   bool _isSaving = false;
+  String? _imageUrl;
 
   late final TextEditingController _prepProcedureController;
   late final TextEditingController _prepTimeController;
@@ -71,6 +75,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _selectedCategoryId = widget.product?.categoryId;
     _selectedCategoryName = widget.product?.categoryName;
     _isActive = widget.product?.isActive ?? true;
+    _imageUrl = widget.product?.imageUrl;
 
     _prepProcedureController = TextEditingController();
     _prepTimeController = TextEditingController(text: '0');
@@ -151,6 +156,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               price: double.parse(_priceController.text),
               categoryId: _selectedCategoryId,
               categoryName: _selectedCategoryName,
+              imageUrl: _imageUrl,
               isActive: _isActive,
             );
       } else {
@@ -160,6 +166,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               price: double.parse(_priceController.text),
               categoryId: _selectedCategoryId!,
               categoryName: _selectedCategoryName!,
+              imageUrl: _imageUrl,
             );
       }
 
@@ -187,6 +194,56 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   bool _fichaTecnicaExpanded = true;
+
+  Future<void> _pickImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        setState(() {
+          _imageUrl = image.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(
+          context,
+          title: 'Error al seleccionar imagen',
+          message: e.toString(),
+          isError: true,
+        );
+      }
+    }
+  }
+
+  Widget _buildImageWidget(String path) {
+    if (kIsWeb || path.startsWith('http') || path.startsWith('blob:')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return const Center(child: Icon(Icons.broken_image_outlined, size: 40));
+        },
+      );
+    } else {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return const Center(child: Icon(Icons.broken_image_outlined, size: 40));
+        },
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -231,50 +288,102 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                height: 140,
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.cardDark : AppColors.grey50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDark ? Colors.white24 : AppColors.grey300,
-                    style: BorderStyle.solid, // Simulated dashed border using clean border
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  width: double.infinity,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.cardDark : AppColors.grey50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? Colors.white24 : AppColors.grey300,
+                    ),
                   ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withAlpha(13) : const Color(0xFFEFF6FF),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.cloud_upload_outlined,
-                        color: Color(0xFF3B82F6),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Haz clic para subir una imagen',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'PNG, JPG hasta 5MB',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: isDark ? Colors.white30 : AppColors.grey400,
-                      ),
-                    ),
-                  ],
+                  clipBehavior: Clip.antiAlias,
+                  child: _imageUrl != null
+                      ? Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _buildImageWidget(_imageUrl!),
+                            // Remove image / change image action button overlay
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _imageUrl = null;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                color: Colors.black45,
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Text(
+                                  'Haz clic para cambiar la imagen',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white.withAlpha(13) : const Color(0xFFEFF6FF),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.cloud_upload_outlined,
+                                color: Color(0xFF3B82F6),
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Haz clic para subir una imagen',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'PNG, JPG hasta 5MB',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: isDark ? Colors.white30 : AppColors.grey400,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -794,7 +903,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                 child: Row(
                                   children: [
                                     Expanded(
-                                      flex: 3,
                                       child: Text(
                                         'INSUMO',
                                         style: GoogleFonts.inter(
@@ -805,8 +913,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                         ),
                                       ),
                                     ),
-                                    Expanded(
-                                      flex: 2,
+                                    SizedBox(
+                                      width: 80,
                                       child: Text(
                                         'CANTIDAD',
                                         textAlign: TextAlign.center,
@@ -819,8 +927,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 2,
+                                    SizedBox(
+                                      width: 60,
                                       child: Text(
                                         'UNIDAD',
                                         textAlign: TextAlign.center,
@@ -853,7 +961,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                     children: [
                                       // Insumo name
                                       Expanded(
-                                        flex: 3,
                                         child: Row(
                                           children: [
                                             Container(
@@ -880,8 +987,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                       ),
 
                                       // Quantity controls: - qty +
-                                      Expanded(
-                                        flex: 2,
+                                      SizedBox(
+                                        width: 80,
                                         child: Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
@@ -903,7 +1010,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                               ),
                                             ),
                                             Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6),
                                               child: Text(
                                                 '${insumo['qty']}',
                                                 style: GoogleFonts.inter(
@@ -935,11 +1042,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                       const SizedBox(width: 8),
 
                                       // Unit dropdown
-                                      Expanded(
-                                        flex: 2,
+                                      SizedBox(
+                                        width: 60,
                                         child: Container(
                                           height: 28,
-                                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 4),
                                           decoration: BoxDecoration(
                                             border: Border.all(color: isDark ? Colors.white24 : AppColors.grey300),
                                             borderRadius: BorderRadius.circular(4),
@@ -971,15 +1078,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
                                       // Delete button
                                       const SizedBox(width: 4),
-                                      InkWell(
-                                        onTap: () {
-                                          setState(() => _selectedInsumos.removeAt(i));
-                                        },
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: Icon(
-                                          Icons.close,
-                                          size: 18,
-                                          color: isDark ? Colors.white30 : const Color(0xFFEF4444),
+                                      SizedBox(
+                                        width: 20,
+                                        child: InkWell(
+                                          onTap: () {
+                                            setState(() => _selectedInsumos.removeAt(i));
+                                          },
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: Icon(
+                                            Icons.close,
+                                            size: 18,
+                                            color: isDark ? Colors.white30 : const Color(0xFFEF4444),
+                                          ),
                                         ),
                                       ),
                                     ],
