@@ -1,0 +1,49 @@
+name: Build iOS IPA (Unsigned)
+
+on:
+  workflow_dispatch: # Permite ejecutar el flujo manualmente desde la pestaña Actions en GitHub
+
+jobs:
+  build-ios:
+    name: Build iOS App (.ipa)
+    runs-on: macos-14 # Usar corredores de Apple Silicon (M1/M2) que son más rápidos
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java (Zulu OpenJDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          cd chazin_food_mobile
+          flutter pub get
+
+      - name: Build Xcode Archive (Unsigned)
+        run: |
+          cd chazin_food_mobile
+          flutter build ipa --no-codesign
+
+      - name: Package App into .ipa
+        run: |
+          cd chazin_food_mobile
+          mkdir -p Payload
+          cp -r build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app Payload/
+          zip -r ChazinFood.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChazinFood-iOS-Unsigned
+          path: chazin_food_mobile/ChazinFood.ipa
+          retention-days: 7
