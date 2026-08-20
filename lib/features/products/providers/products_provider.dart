@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../config/api/api_client.dart';
 import '../../../shared/models/product_model.dart';
-import '../data/mock_products_repository.dart';
+import '../data/products_repository.dart';
 
-/// Provider del repositorio
-final productsRepositoryProvider = Provider<MockProductsRepository>((ref) {
-  return MockProductsRepository();
+/// Provider del repositorio de productos
+final productsRepositoryProvider = Provider<ProductsRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return ProductsRepository(apiClient);
 });
 
 /// Estado de la lista de productos
@@ -47,7 +49,7 @@ class ProductsState {
   List<Product> get filteredProducts {
     var filtered = List<Product>.from(products);
 
-    if (selectedCategoryId != null) {
+    if (selectedCategoryId != null && selectedCategoryId != 'cat_all') {
       filtered = filtered.where((p) => p.categoryId == selectedCategoryId).toList();
     }
 
@@ -65,9 +67,11 @@ class ProductsState {
 
 /// Notifier de productos
 class ProductsNotifier extends StateNotifier<ProductsState> {
-  final MockProductsRepository _repository;
+  final ProductsRepository _repository;
 
-  ProductsNotifier(this._repository) : super(const ProductsState());
+  ProductsNotifier(this._repository) : super(const ProductsState()) {
+    loadProducts();
+  }
 
   Future<void> loadProducts() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -144,6 +148,6 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
 
 /// Provider global de productos
 final productsProvider = StateNotifierProvider<ProductsNotifier, ProductsState>((ref) {
-  final repository = ref.read(productsRepositoryProvider);
+  final repository = ref.watch(productsRepositoryProvider);
   return ProductsNotifier(repository);
 });

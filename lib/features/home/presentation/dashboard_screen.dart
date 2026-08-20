@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../providers/dark_mode_provider.dart';
 import '../../../providers/navigation_provider.dart';
+import '../../sales/providers/dashboard_provider.dart';
+import '../../../shared/models/dashboard_stats_model.dart';
 
 import '../../../routes/app_shell.dart';
 
@@ -24,6 +26,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dashboardState = ref.watch(dashboardProvider);
+    final stats = dashboardState.stats;
 
     return Scaffold(
       appBar: AppBar(
@@ -61,7 +65,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () async {
-            await Future.delayed(const Duration(milliseconds: 600));
+            await ref.read(dashboardProvider.notifier).loadDashboardData();
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -94,8 +98,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: 20),
 
-
-
                     // ─── Metric Cards (2×2 Grid) ───
                     Row(
                       children: [
@@ -105,8 +107,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             iconColor: const Color(0xFF10B981),
                             iconBg: const Color(0xFFD1FAE5),
                             label: 'Ventas del Mes',
-                            value: '\$28.4M',
-                            trendText: '↗ +12.5%',
+                            value: stats.ventasTotal >= 1000000
+                                ? '\$${(stats.ventasTotal / 1000000).toStringAsFixed(1)}M'
+                                : '\$${stats.ventasTotal.toStringAsFixed(0)}',
+                            trendText: '${stats.ventasVariacion >= 0 ? '↗ +' : '↘ '}${stats.ventasVariacion.toStringAsFixed(1)}%',
                             trendColor: const Color(0xFF10B981),
                             isDark: isDark,
                           ),
@@ -118,8 +122,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             iconColor: const Color(0xFF3B82F6),
                             iconBg: const Color(0xFFDBEAFE),
                             label: 'Total Pedidos',
-                            value: '1,248',
-                            trendText: '↗ +8.2%',
+                            value: '${stats.pedidosTotal}',
+                            trendText: '${stats.pedidosVariacion >= 0 ? '↗ +' : '↘ '}${stats.pedidosVariacion.toStringAsFixed(1)}%',
                             trendColor: const Color(0xFF3B82F6),
                             isDark: isDark,
                           ),
@@ -135,8 +139,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             iconColor: const Color(0xFF8B5CF6),
                             iconBg: const Color(0xFFEDE9FE),
                             label: 'Clientes Activos',
-                            value: '342',
-                            trendText: '↗ +15.3%',
+                            value: '${stats.clientesActivos}',
+                            trendText: '${stats.clientesVariacion >= 0 ? '↗ +' : '↘ '}${stats.clientesVariacion.toStringAsFixed(1)}%',
                             trendColor: const Color(0xFF10B981),
                             isDark: isDark,
                           ),
@@ -148,8 +152,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             iconColor: const Color(0xFFEF4444),
                             iconBg: const Color(0xFFFEE2E2),
                             label: 'Productos',
-                            value: '68',
-                            trendText: '⚠ 5 bajo stock',
+                            value: '${stats.productosTotal}',
+                            trendText: '⚠ ${stats.insumosBajoStock} bajo stock',
                             trendColor: const Color(0xFFEF4444),
                             isDark: isDark,
                           ),
@@ -159,15 +163,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     const SizedBox(height: 24),
 
                     // ─── Ventas y Compras Chart ───
-                    _buildVentasComprasChart(isDark),
+                    _buildVentasComprasChart(isDark, dashboardState.ventasChart),
                     const SizedBox(height: 24),
 
                     // ─── Productos Más Vendidos Chart ───
-                    _buildProductosMasVendidos(isDark),
+                    _buildProductosMasVendidos(isDark, dashboardState.productosPopulares),
                     const SizedBox(height: 24),
 
                     // ─── Alertas de Stock ───
-                    _buildAlertasDeStock(isDark),
+                    _buildAlertasDeStock(isDark, dashboardState.alertasStock),
                     const SizedBox(height: 24),
 
                     // ─── Ventas Recientes ───
@@ -196,8 +200,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required bool isDark,
   }) {
     return Container(
-      height: 130,
-      padding: const EdgeInsets.all(14),
+      constraints: const BoxConstraints(minHeight: 138),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -285,7 +289,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // Custom Line Chart for "Ventas y Compras"
-  Widget _buildVentasComprasChart(bool isDark) {
+  Widget _buildVentasComprasChart(bool isDark, List<VentasChartData> chartData) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -323,9 +327,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ? 32 + _selectedMonthIndex! * stepX
                   : 0.0;
 
-              final months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
-              final ingresos = [12000, 15200, 19000, 22000, 26000, 28000];
-              final egresos = [7500, 9500, 11000, 13500, 15000, 16500];
+              final months = chartData.isNotEmpty ? chartData.map((d) => d.mes).toList() : ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
+              final ingresos = chartData.isNotEmpty ? chartData.map((d) => d.ventas).toList() : [12000.0, 15200.0, 19000.0, 22000.0, 26000.0, 28000.0];
+              final egresos = chartData.isNotEmpty ? chartData.map((d) => d.compras).toList() : [7500.0, 9500.0, 11000.0, 13500.0, 15000.0, 16500.0];
 
               final currentMonth = _selectedMonthIndex != null ? months[_selectedMonthIndex!] : '';
               final currentIngreso = _selectedMonthIndex != null ? ingresos[_selectedMonthIndex!] : 0;
@@ -482,14 +486,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // Horizonal Bar Chart for "Productos Más Vendidos"
-  Widget _buildProductosMasVendidos(bool isDark) {
-    final products = [
-      {'name': 'Hamburguesa Especial', 'val': 240},
-      {'name': 'Salchipapa Grande', 'val': 195},
-      {'name': 'Perro Caliente', 'val': 80},
-      {'name': 'Pollo Broaster', 'val': 80},
-      {'name': 'Papas Fritas', 'val': 120},
-    ];
+  Widget _buildProductosMasVendidos(bool isDark, List<PopularProductItem> popularItems) {
+    final products = popularItems.isNotEmpty
+        ? popularItems.map((p) => {'name': p.nombre, 'val': p.ventas}).toList()
+        : [
+            {'name': 'Hamburguesa Especial', 'val': 240},
+            {'name': 'Salchipapa Grande', 'val': 195},
+            {'name': 'Perro Caliente', 'val': 80},
+            {'name': 'Pollo Broaster', 'val': 80},
+            {'name': 'Papas Fritas', 'val': 120},
+          ];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -657,14 +663,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // Stock alerts with exact button actions
-  Widget _buildAlertasDeStock(bool isDark) {
-    final alerts = [
-      {'name': 'Pan de Hamburguesa', 'qty': '15 / 50 unidades'},
-      {'name': 'Salchicha Premium', 'qty': '8 / 30 unidades'},
-      {'name': 'Papas Congeladas', 'qty': '12 / 40 unidades'},
-      {'name': 'Queso Mozzarella', 'qty': '6 / 20 unidades'},
-      {'name': 'Tomate', 'qty': '9 / 25 unidades'},
-    ];
+  Widget _buildAlertasDeStock(bool isDark, List<StockAlertItem> stockAlerts) {
+    final alerts = stockAlerts.isNotEmpty
+        ? stockAlerts.map((a) => {'name': a.nombre, 'qty': a.formattedQty}).toList()
+        : [
+            {'name': 'Pan de Hamburguesa', 'qty': '15 / 50 unidades'},
+            {'name': 'Salchicha Premium', 'qty': '8 / 30 unidades'},
+            {'name': 'Papas Congeladas', 'qty': '12 / 40 unidades'},
+            {'name': 'Queso Mozzarella', 'qty': '6 / 20 unidades'},
+            {'name': 'Tomate', 'qty': '9 / 25 unidades'},
+          ];
 
     return Container(
       padding: const EdgeInsets.all(16),

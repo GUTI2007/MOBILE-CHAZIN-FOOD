@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../config/api/api_client.dart';
 import '../../../shared/models/user_model.dart';
-import '../data/mock_auth_repository.dart';
+import '../data/auth_repository.dart';
 
 /// Estado de autenticación
 class AuthState {
@@ -32,13 +33,14 @@ class AuthState {
 }
 
 /// Provider del repositorio de autenticación
-final authRepositoryProvider = Provider<MockAuthRepository>((ref) {
-  return MockAuthRepository();
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return AuthRepository(apiClient);
 });
 
 /// Notifier de autenticación
 class AuthNotifier extends StateNotifier<AuthState> {
-  final MockAuthRepository _repository;
+  final AuthRepository _repository;
 
   AuthNotifier(this._repository) : super(const AuthState());
 
@@ -88,7 +90,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 /// Provider global de autenticación
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  final repository = ref.read(authRepositoryProvider);
+  final repository = ref.watch(authRepositoryProvider);
   return AuthNotifier(repository);
 });
 

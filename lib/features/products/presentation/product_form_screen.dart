@@ -35,6 +35,12 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   late final TextEditingController _observationsController;
   late final TextEditingController _insumosSearchController;
 
+  late final TextEditingController _loteController;
+  late final TextEditingController _registroSanitarioController;
+  late final TextEditingController _proveedorController;
+  late final TextEditingController _diasCaducidadController;
+  bool _trazabilidadExpanded = true;
+
   final List<Map<String, dynamic>> _mockInsumos = [
     {'name': 'Lechuga', 'category': 'Verduras', 'price': '\$2.000/und', 'unit': 'und'},
     {'name': 'Pollo', 'category': 'Proteínas', 'price': '\$12.000/kg', 'unit': 'kg'},
@@ -83,6 +89,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _observationsController = TextEditingController();
     _insumosSearchController = TextEditingController();
 
+    _loteController = TextEditingController(text: widget.product?.lote ?? 'LOT-2026-0820-A');
+    _registroSanitarioController = TextEditingController(text: widget.product?.registroSanitario ?? 'NSA-000982-2024');
+    _proveedorController = TextEditingController(text: 'Distribuidora Central Food S.A.S.');
+    _diasCaducidadController = TextEditingController(text: '30');
+
     _insumosSearchController.addListener(_onSearchChanged);
 
     _adicionesIngredientes = [
@@ -129,6 +140,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _observationsController.dispose();
     _insumosSearchController.removeListener(_onSearchChanged);
     _insumosSearchController.dispose();
+    _loteController.dispose();
+    _registroSanitarioController.dispose();
+    _proveedorController.dispose();
+    _diasCaducidadController.dispose();
     super.dispose();
   }
 
@@ -669,6 +684,213 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 textSecondary: isDark ? AppColors.textSecondaryDark : Colors.grey[600]!,
                 borderColor: isDark ? Colors.white.withAlpha(20) : const Color(0xFFE5E7EB),
                 cardColor: isDark ? AppColors.cardDark : Colors.white,
+              ),
+
+              const SizedBox(height: 24),
+
+              // ─── Trazabilidad y Control de Lotes (Collapsible panel) ───
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : AppColors.grey50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? Colors.white10 : AppColors.grey200),
+                ),
+                child: Column(
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        setState(() => _trazabilidadExpanded = !_trazabilidadExpanded);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _trazabilidadExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                              color: isDark ? Colors.white54 : AppColors.grey600,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.verified_outlined,
+                              color: Color(0xFF0EA5E9),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Trazabilidad y Control de Lotes',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_trazabilidadExpanded) ...[
+                      const Divider(height: 1, thickness: 1),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Código de Lote',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextField(
+                                        controller: _loteController,
+                                        style: GoogleFonts.inter(fontSize: 13),
+                                        decoration: InputDecoration(
+                                          hintText: 'Ej: LOT-2026-0820-A',
+                                          filled: true,
+                                          fillColor: isDark ? AppColors.surfaceDark : Colors.white,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Registro Sanitario',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextField(
+                                        controller: _registroSanitarioController,
+                                        style: GoogleFonts.inter(fontSize: 13),
+                                        decoration: InputDecoration(
+                                          hintText: 'Ej: NSA-000982-2024',
+                                          filled: true,
+                                          fillColor: isDark ? AppColors.surfaceDark : Colors.white,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Proveedor Principal',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextField(
+                                        controller: _proveedorController,
+                                        style: GoogleFonts.inter(fontSize: 13),
+                                        decoration: InputDecoration(
+                                          hintText: 'Ej: Central Food S.A.S.',
+                                          filled: true,
+                                          fillColor: isDark ? AppColors.surfaceDark : Colors.white,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Vida Útil (Días)',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextField(
+                                        controller: _diasCaducidadController,
+                                        keyboardType: TextInputType.number,
+                                        style: GoogleFonts.inter(fontSize: 13),
+                                        decoration: InputDecoration(
+                                          hintText: 'Ej: 30',
+                                          filled: true,
+                                          fillColor: isDark ? AppColors.surfaceDark : Colors.white,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
 
               const SizedBox(height: 24),

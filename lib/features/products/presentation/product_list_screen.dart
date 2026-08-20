@@ -819,7 +819,173 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+                        // ─── Sección de Adiciones ───
+                        Text(
+                          'Adiciones y Opción de Extras',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: (product.adiciones.isNotEmpty
+                                  ? product.adiciones
+                                  : [
+                                      {'nombre': 'Queso Extra', 'precio': 2000.0},
+                                      {'nombre': 'Tocineta', 'precio': 3000.0},
+                                      {'nombre': 'Salsa BBQ', 'precio': 1000.0},
+                                      {'nombre': 'Papas Fritas', 'precio': 4000.0},
+                                    ])
+                              .map((add) {
+                            final String name = add['nombre'] ?? '';
+                            final double price = (add['precio'] is num) ? (add['precio'] as num).toDouble() : 0.0;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF262F45) : const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.add_circle_outline, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    name,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                    ),
+                                  ),
+                                  if (price > 0) ...[
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '+${Formatters.currency(price)}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // ─── Sección de Trazabilidad ───
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardDark : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? Colors.white.withAlpha(20) : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.verified_outlined, size: 18, color: Color(0xFF0EA5E9)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Trazabilidad y Calidad',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Código de Lote:',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
+                                    ),
+                                  ),
+                                  Text(
+                                    product.lote ?? 'LOT-2026-0820-A',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Reg. Sanitario / INVIMA:',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
+                                    ),
+                                  ),
+                                  Text(
+                                    product.registroSanitario ?? 'NSA-000982-2024',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Versión Ficha Técnica:',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE0F2FE),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      'v1.2 (Vigente)',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF0369A1),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
                         // Close action row
                         Align(
                           alignment: Alignment.centerRight,
@@ -2508,8 +2674,8 @@ class _StatBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      constraints: const BoxConstraints(minHeight: 88),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(14),
