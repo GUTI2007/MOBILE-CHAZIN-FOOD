@@ -17,12 +17,36 @@ class ProductsRepository {
     return [];
   }
 
-  /// Obtiene la lista de categorías desde /api/categorias
+  /// Obtiene la lista de categorías activas desde /api/categorias-producto o /api/categorias
   Future<List<ProductCategory>> getCategories() async {
-    final response = await _apiClient.get('/categorias');
-    if (response.statusCode == 200 && response.data is List) {
-      final List list = response.data;
-      final categories = list.map((item) => ProductCategory.fromJson(Map<String, dynamic>.from(item))).toList();
+    dynamic responseData;
+    try {
+      final res = await _apiClient.get('/categorias-producto');
+      if (res.statusCode == 200 && res.data is List) {
+        responseData = res.data;
+      }
+    } catch (_) {}
+
+    if (responseData == null) {
+      try {
+        final res = await _apiClient.get('/categorias');
+        if (res.statusCode == 200 && res.data is List) {
+          responseData = res.data;
+        }
+      } catch (_) {}
+    }
+
+    if (responseData is List) {
+      final List list = responseData;
+      final categories = list
+          .map((item) => ProductCategory.fromJson(Map<String, dynamic>.from(item)))
+          .where((c) =>
+              c.id != '0' &&
+              c.id != 0.toString() &&
+              c.name != '__SISTEMA_VARIANTE_CERO__' &&
+              c.isActive)
+          .toList();
+
       // Insertar opción "Todas" al inicio si no viene del backend
       if (!categories.any((c) => c.id == 'cat_all' || c.name.toLowerCase() == 'todas')) {
         categories.insert(

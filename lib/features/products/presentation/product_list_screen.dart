@@ -291,7 +291,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 child: Text('Todas las categorías', style: GoogleFonts.inter(fontSize: 13)),
                               ),
                               ...state.categories
-                                  .where((c) => c.id != 'cat_all')
+                                  .where((c) =>
+                                      c.id != 'cat_all' &&
+                                      c.id != '0' &&
+                                      c.name != '__SISTEMA_VARIANTE_CERO__' &&
+                                      c.isActive)
                                   .map((c) => PopupMenuItem(
                                         value: c.id,
                                         child: Text(c.name, style: GoogleFonts.inter(fontSize: 13)),
@@ -708,7 +712,29 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         width: double.infinity,
                         color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                         child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                            ? Image.network(product.imageUrl!, fit: BoxFit.cover)
+                            ? Image.network(
+                                product.imageUrl!,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Center(
+                                    child: Icon(
+                                      Icons.fastfood_rounded,
+                                      size: 72,
+                                      color: AppColors.primary,
+                                    ),
+                                  );
+                                },
+                              )
                             : const Center(
                                 child: Icon(
                                   Icons.fastfood_rounded,
@@ -2695,7 +2721,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 fechaInicio: isTemporal && startDate != null ? "${startDate!.year}-${startDate!.month.toString().padLeft(2, '0')}-${startDate!.day.toString().padLeft(2, '0')}" : null,
                                 fechaFin: isTemporal && endDate != null ? "${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}" : null,
                                 estado: 'Activo',
-                                idProducto: product.id,
+                                idProducto: int.tryParse(product.id),
                                 tipoEvento: selectedEventType,
                                 descuento: double.tryParse(discountPercentageController.text),
                                 nuevoPrecio: double.tryParse(promoPriceController.text),
@@ -3094,12 +3120,43 @@ class _FigmaProductCard extends StatelessWidget {
                   gradient: AppColors.cardGradient,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-                child: Center(
-                  child: Text(
-                    product.emoji,
-                    style: const TextStyle(fontSize: 72),
-                  ),
-                ),
+                clipBehavior: Clip.antiAlias,
+                child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                    ? Image.network(
+                        product.imageUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(
+                            child: Icon(
+                              Icons.fastfood_rounded,
+                              size: 56,
+                              color: Colors.white70,
+                            ),
+                          );
+                        },
+                      )
+                    : Center(
+                        child: product.emoji.isNotEmpty
+                            ? Text(
+                                product.emoji,
+                                style: const TextStyle(fontSize: 72),
+                              )
+                            : const Icon(
+                                Icons.fastfood_rounded,
+                                size: 56,
+                                color: Colors.white70,
+                              ),
+                      ),
               ),
               // Badge: Popular or Bajo Stock (top-left)
               if (product.isPopular || product.name == 'Muslito de Pollo')

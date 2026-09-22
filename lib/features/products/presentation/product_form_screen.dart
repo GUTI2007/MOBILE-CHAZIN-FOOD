@@ -475,7 +475,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     isExpanded: true,
                     style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white : AppColors.textPrimaryLight),
                     items: state.categories
-                        .where((c) => c.id != 'cat_all')
+                        .where((c) =>
+                            c.id != 'cat_all' &&
+                            c.id != '0' &&
+                            c.name != '__SISTEMA_VARIANTE_CERO__' &&
+                            c.isActive)
                         .map((c) => DropdownMenuItem(
                               value: c.id,
                               child: Text(c.name),

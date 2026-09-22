@@ -1,13 +1,17 @@
-/// Categoría de producto
+import 'dart:convert';
+
+/// Categoría de producto (Mapeada de la tabla `categoriaproducto` de MySQL)
 class ProductCategory {
   final String id;
   final String name;
+  final String? description;
   final String? icon;
   final bool isActive;
 
   const ProductCategory({
     required this.id,
     required this.name,
+    this.description,
     this.icon,
     this.isActive = true,
   });
@@ -15,11 +19,16 @@ class ProductCategory {
   factory ProductCategory.fromJson(Map<String, dynamic> json) {
     final rawId = json['idCategoriaProducto'] ?? json['id'] ?? '';
     final estado = json['estado'];
-    final isActive = estado == null || estado == 1 || estado == 'Activo' || estado == true;
+    final bool isActive = estado == null ||
+        estado == 1 ||
+        estado == '1' ||
+        estado == 'Activo' ||
+        estado == true;
 
     return ProductCategory(
       id: rawId.toString(),
       name: json['nombre'] ?? json['name'] ?? '',
+      description: json['descripcion']?.toString(),
       icon: json['icon'] ?? json['icono'],
       isActive: isActive,
     );
@@ -27,15 +36,16 @@ class ProductCategory {
 
   Map<String, dynamic> toJson() {
     return {
-      'idCategoriaProducto': id,
+      'idCategoriaProducto': int.tryParse(id) ?? id,
       'nombre': name,
+      'descripcion': description,
       'icon': icon,
-      'estado': isActive ? 'Activo' : 'Inactivo',
+      'estado': isActive ? 1 : 0,
     };
   }
 }
 
-/// Producto
+/// Producto (Mapeado de la tabla `producto` de MySQL)
 class Product {
   final String id;
   final String name;
@@ -104,48 +114,40 @@ class Product {
     final rawMargen = json['margenGanancia'] ?? json['margen'] ?? 0;
     final double margenVal = (rawMargen is num)
         ? rawMargen.toDouble()
-        : priceVal > 0 ? (((priceVal - costoVal) / priceVal) * 100).roundToDouble() : 0.0;
+        : (priceVal > 0 ? (((priceVal - costoVal) / priceVal) * 100).roundToDouble() : 0.0);
 
     final estado = json['estado'] ?? json['statusString'];
-    final bool isActive = estado == null || estado == 1 || estado == 'Activo' || estado == 'Disponible' || estado == true;
+    final bool isActive = estado == null ||
+        estado == 1 ||
+        estado == '1' ||
+        estado == 'Activo' ||
+        estado == 'Disponible' ||
+        estado == true;
     final String statusStr = (estado is String && estado.isNotEmpty)
         ? estado
         : (isActive ? 'Disponible' : 'Inactivo');
 
-    final rawAdiciones = json['adiciones'];
-    List<Map<String, dynamic>> parsedAdiciones = [];
-    if (rawAdiciones is List) {
-      parsedAdiciones = rawAdiciones.map((item) {
-        if (item is Map<String, dynamic>) return item;
-        return {'nombre': item.toString(), 'precio': 0.0};
-      }).toList();
-    }
-
-    final rawInsumos = json['insumos'];
-    List<Map<String, dynamic>> parsedInsumos = [];
-    if (rawInsumos is List) {
-      parsedInsumos = rawInsumos.map((item) {
-        if (item is Map<String, dynamic>) return item;
-        return {'nombre': item.toString(), 'cantidad': '1 und'};
-      }).toList();
-    }
-
-    final rawVariantes = json['variantes'];
-    List<Map<String, dynamic>> parsedVariantes = [];
-    if (rawVariantes is List) {
-      parsedVariantes = rawVariantes.map((item) {
-        if (item is Map<String, dynamic>) return item;
-        return {'nombre': item.toString(), 'precio': priceVal};
-      }).toList();
-    }
-
-    final rawResenas = json['resenas'];
-    List<Map<String, dynamic>> parsedResenas = [];
-    if (rawResenas is List) {
-      parsedResenas = rawResenas.map((item) {
-        if (item is Map<String, dynamic>) return item;
-        return {'usuario': 'Cliente', 'comentario': item.toString(), 'calificacion': 5.0};
-      }).toList();
+    List<Map<String, dynamic>> parseListMap(dynamic rawData) {
+      if (rawData is List) {
+        return rawData.map((item) {
+          if (item is Map<String, dynamic>) return item;
+          if (item is Map) return Map<String, dynamic>.from(item);
+          return {'nombre': item.toString(), 'precio': 0.0};
+        }).toList();
+      }
+      if (rawData is String && rawData.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawData);
+          if (decoded is List) {
+            return decoded.map((item) {
+              if (item is Map<String, dynamic>) return item;
+              if (item is Map) return Map<String, dynamic>.from(item);
+              return {'nombre': item.toString(), 'precio': 0.0};
+            }).toList();
+          }
+        } catch (_) {}
+      }
+      return [];
     }
 
     return Product(
@@ -155,38 +157,40 @@ class Product {
       price: priceVal,
       categoryId: rawCatId.toString(),
       categoryName: json['categoria'] ?? json['categoryName'] ?? '',
-      imageUrl: json['imagen'] ?? json['imageUrl'],
+      imageUrl: (json['imagen'] != null && json['imagen'].toString().isNotEmpty)
+          ? json['imagen'].toString()
+          : json['imageUrl']?.toString(),
       emoji: json['emoji'] ?? '',
       isActive: isActive,
       isPopular: json['isPopular'] ?? false,
-      totalSold: json['totalSold'] ?? 0,
+      totalSold: (json['totalSold'] is num) ? (json['totalSold'] as num).toInt() : 0,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
-      lote: json['lote'],
-      registroSanitario: json['registroSanitario'],
-      trazabilidadInfo: json['trazabilidadInfo'],
-      vidaUtil: json['vidaUtil'],
+      lote: json['lote']?.toString(),
+      registroSanitario: json['registroSanitario']?.toString(),
+      trazabilidadInfo: json['trazabilidadInfo']?.toString(),
+      vidaUtil: json['vidaUtil']?.toString(),
       costoEstimado: costoVal,
       margenGanancia: margenVal,
       statusString: statusStr,
-      adiciones: parsedAdiciones,
-      insumos: parsedInsumos,
-      variantes: parsedVariantes,
-      resenas: parsedResenas,
+      adiciones: parseListMap(json['adiciones']),
+      insumos: parseListMap(json['insumos']),
+      variantes: parseListMap(json['variantes']),
+      resenas: parseListMap(json['resenas']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'idProducto': id,
+      'idProducto': int.tryParse(id) ?? id,
       'nombre': name,
       'descripcion': description,
       'precio': price,
-      'idCategoriaProducto': categoryId,
+      'idCategoriaProducto': int.tryParse(categoryId) ?? categoryId,
       'categoria': categoryName,
       'imagen': imageUrl,
-      'estado': statusString,
+      'estado': isActive ? 1 : 0,
       'lote': lote,
       'registroSanitario': registroSanitario,
       'trazabilidadInfo': trazabilidadInfo,
@@ -250,3 +254,4 @@ class Product {
     );
   }
 }
+
