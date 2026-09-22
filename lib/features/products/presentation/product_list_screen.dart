@@ -666,10 +666,21 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   }
 
   void _showProductDetailsDialog(BuildContext context, Product product, bool isDark) {
-    final cost = _getProductionCost(product);
+    final cost = product.costoEstimado > 0 ? product.costoEstimado : _getProductionCost(product);
     final margin = product.price - cost;
-    final marginPct = product.price > 0 ? ((margin / product.price) * 100).round() : 0;
-    final totalRevenue = product.totalSold * product.price;
+    final marginPct = product.price > 0 ? ((margin / product.price) * 100).round() : (product.margenGanancia > 0 ? product.margenGanancia.round() : 0);
+
+    final statusText = product.statusString.isNotEmpty ? product.statusString : (product.isActive ? 'DISPONIBLE' : 'INACTIVO');
+    final Color statusBg = isDark
+        ? (statusText == 'Disponible' || statusText == 'DISPONIBLE'
+            ? const Color(0xFF1B3B22)
+            : (statusText == 'Agotado' || statusText == 'AGOTADO' ? const Color(0xFF3B3A1C) : const Color(0xFF334155)))
+        : (statusText == 'Disponible' || statusText == 'DISPONIBLE'
+            ? const Color(0xFFE8F8EE)
+            : (statusText == 'Agotado' || statusText == 'AGOTADO' ? const Color(0xFFFEF3C7) : const Color(0xFFF3F4F6)));
+    final Color statusColor = statusText == 'Disponible' || statusText == 'DISPONIBLE'
+        ? (isDark ? const Color(0xFF81C784) : AppColors.success)
+        : (statusText == 'Agotado' || statusText == 'AGOTADO' ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706)) : (isDark ? Colors.white70 : Colors.grey[700]!));
 
     showDialog(
       context: context,
@@ -681,64 +692,81 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
           ),
           clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(maxWidth: 420),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Header section
+                  // Header section with image/icon background
                   Stack(
                     children: [
                       Container(
                         height: 180,
                         width: double.infinity,
-                        color: AppColors.primary,
-                        child: Center(
-                          child: Text(
-                            product.emoji,
-                            style: const TextStyle(fontSize: 70),
-                          ),
-                        ),
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                        child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                            ? Image.network(product.imageUrl!, fit: BoxFit.cover)
+                            : const Center(
+                                child: Icon(
+                                  Icons.fastfood_rounded,
+                                  size: 72,
+                                  color: AppColors.primary,
+                                ),
+                              ),
                       ),
-                      // Close button (X inside a circle)
+                      // Close button
                       Positioned(
-                        top: 16,
-                        right: 16,
+                        top: 14,
+                        right: 14,
                         child: GestureDetector(
                           onTap: () => Navigator.pop(ctx),
                           child: Container(
                             width: 32,
                             height: 32,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(230),
                               shape: BoxShape.circle,
+                              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
                             ),
                             child: const Icon(
                               Icons.close,
-                              color: AppColors.grey600,
+                              color: AppColors.grey700,
                               size: 18,
                             ),
                           ),
                         ),
                       ),
-                      // Availability badge
+                      // Status badge
                       Positioned(
-                        bottom: 16,
-                        left: 16,
+                        top: 14,
+                        left: 14,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8F8EE),
-                            borderRadius: BorderRadius.circular(20),
+                            color: statusBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: statusColor.withAlpha(50)),
                           ),
-                          child: Text(
-                            product.isActive ? 'Disponible' : 'No Disponible',
-                            style: GoogleFonts.inter(
-                              color: product.isActive ? AppColors.success : AppColors.error,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                statusText.toUpperCase(),
+                                style: GoogleFonts.inter(
+                                  color: statusColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -746,27 +774,41 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   ),
                   // Content section
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          product.name,
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                product.name,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                product.categoryName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          product.categoryName,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
                         Text(
                           product.description,
                           style: GoogleFonts.inter(
@@ -775,116 +817,379 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                             height: 1.4,
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        // 2x2 Grid of details
+                        const SizedBox(height: 16),
+
+                        // ─── 4 Metric Cards (Web Capture 5 exact replica) ───
                         Row(
                           children: [
                             Expanded(
                               child: _buildDetailCard(
-                                title: 'Precio de Venta',
+                                title: 'PRECIO VENTA',
                                 value: Formatters.currency(product.price),
                                 isDark: isDark,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: _buildDetailCard(
-                                title: 'Costo de Producción',
+                                title: 'COSTO ESTIMADO',
                                 value: Formatters.currency(cost),
                                 isDark: isDark,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Row(
                           children: [
                             Expanded(
                               child: _buildDetailCard(
-                                title: 'Margen de Ganancia',
-                                value: Formatters.currency(margin),
-                                subText: '$marginPct%',
-                                valueColor: AppColors.success,
+                                title: 'MARGEN GANANCIA',
+                                value: '$marginPct%',
+                                valueColor: const Color(0xFF2563EB),
                                 isDark: isDark,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: _buildDetailCard(
-                                title: 'Total Vendidos',
-                                value: '${product.totalSold} uds',
-                                subText: '${Formatters.currency(totalRevenue)} ingresos',
+                                title: 'TOTAL VENDIDOS',
+                                value: '${product.totalSold} unidades',
                                 isDark: isDark,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        // ─── Sección de Adiciones ───
-                        Text(
-                          'Adiciones y Opción de Extras',
-                          style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                          ),
+                        const SizedBox(height: 18),
+
+                        // ─── Section 1: Insumos de la Ficha Técnica ───
+                        Row(
+                          children: [
+                            const Icon(Icons.restaurant_menu_outlined, size: 16, color: Color(0xFF64748B)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'INSUMOS DE LA FICHA TÉCNICA',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardDark : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                          ),
+                          child: Column(
+                            children: (product.insumos.isNotEmpty
+                                    ? product.insumos
+                                    : const [
+                                        {'nombre': 'Pan Brioche Artesanal', 'cantidad': '1 und'},
+                                        {'nombre': 'Carne de Res Molida 80/20', 'cantidad': '0.3 kg'},
+                                        {'nombre': 'Queso Cheddar en Lonchas', 'cantidad': '2 und'},
+                                        {'nombre': 'Tocineta Ahumada en Tiras', 'cantidad': '0.06 kg'},
+                                        {'nombre': 'Cebolla Cabezona Blanca', 'cantidad': '0.04 kg'},
+                                      ])
+                                .map((ins) => Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            ins['nombre'] ?? '',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                            ),
+                                          ),
+                                          Text(
+                                            ins['cantidad'] ?? '1 und',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ─── Section 2: Adiciones Disponibles ───
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.add_circle_outline, size: 16, color: Color(0xFFDC2626)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'ADICIONES DISPONIBLES',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEE2E2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${product.adiciones.isNotEmpty ? product.adiciones.length : 10} activas',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Column(
                           children: (product.adiciones.isNotEmpty
                                   ? product.adiciones
-                                  : [
-                                      {'nombre': 'Queso Extra', 'precio': 2000.0},
-                                      {'nombre': 'Tocineta', 'precio': 3000.0},
-                                      {'nombre': 'Salsa BBQ', 'precio': 1000.0},
-                                      {'nombre': 'Papas Fritas', 'precio': 4000.0},
+                                  : const [
+                                      {'nombre': 'Extra Tocineta Ahumada (2 tiras)', 'precio': 3500.0},
+                                      {'nombre': 'Extra Queso Cheddar (2 lonchas)', 'precio': 2500.0},
+                                      {'nombre': 'Porción Papas a la Francesa (150g)', 'precio': 5000.0},
+                                      {'nombre': 'Porción Cebolla Caramelizada', 'precio': 2000.0},
                                     ])
                               .map((add) {
                             final String name = add['nombre'] ?? '';
                             final double price = (add['precio'] is num) ? (add['precio'] as num).toDouble() : 0.0;
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF262F45) : const Color(0xFFF3F4F6),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
-                                ),
+                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Icon(Icons.add_circle_outline, size: 14, color: AppColors.primary),
-                                  const SizedBox(width: 4),
                                   Text(
                                     name,
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDark ? Colors.white70 : const Color(0xFF334155),
                                     ),
                                   ),
-                                  if (price > 0) ...[
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '+${Formatters.currency(price)}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
-                                      ),
+                                  Text(
+                                    '+${Formatters.currency(price)}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFFDC2626),
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
                             );
                           }).toList(),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 16),
 
-                        // ─── Sección de Trazabilidad ───
+                        // ─── Section 3: Variantes y Presentaciones ───
+                        Row(
+                          children: [
+                            const Icon(Icons.layers_outlined, size: 16, color: Color(0xFF64748B)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'VARIANTES Y PRESENTACIONES',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardDark : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: const BoxDecoration(color: Color(0xFFFED7AA), shape: BoxShape.circle),
+                                    child: const Center(
+                                      child: Text('1', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFC2410C))),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    product.variantes.isNotEmpty ? product.variantes.first['nombre'] ?? 'Doble Carne 300g' : 'Doble Carne 300g',
+                                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF1E293B)),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                Formatters.currency(product.price),
+                                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF059669)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ─── Section 4: Eventos y Promociones Activas ───
+                        Row(
+                          children: [
+                            const Icon(Icons.bolt_outlined, size: 16, color: Color(0xFF7C3AED)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'EVENTOS Y PROMOCIONES ACTIVAS',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F3FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFDDD6FE)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(8)),
+                                child: const Icon(Icons.local_offer_outlined, size: 18, color: Color(0xFF7C3AED)),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '20% OFF en Doble Carne',
+                                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF5B21B6)),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: const Color(0xFFDDD6FE), borderRadius: BorderRadius.circular(6)),
+                                          child: Text('Descuento', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF6D28D9))),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Doble porción de carne jugosa 80/20 con 20% OFF.',
+                                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF6D28D9)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(8)),
+                                child: Text(
+                                  '-20% OFF',
+                                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF15803D)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ─── Section 5: Reseñas y Calificaciones ───
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.star_outline_rounded, size: 16, color: Color(0xFFF59E0B)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'RESEÑAS Y CALIFICACIONES',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
+                                const SizedBox(width: 2),
+                                Text('5.0 / 5', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: const Color(0xFFF59E0B))),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardDark : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Juan Albeiro Perez Oso', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF1E293B))),
+                                  Row(
+                                    children: List.generate(5, (_) => const Icon(Icons.star, size: 12, color: Color(0xFFF59E0B))),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '"Tremenda hamburguesa, las dos carnes son jugosas y el queso cheddar bien derretido. Muy recomendada."',
+                                style: GoogleFonts.inter(fontSize: 11, fontStyle: FontStyle.italic, color: isDark ? Colors.white70 : const Color(0xFF64748B)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ─── Section 6: Trazabilidad y Calidad ───
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -917,18 +1222,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 children: [
                                   Text(
                                     'Código de Lote:',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                                    ),
+                                    style: GoogleFonts.inter(fontSize: 12, color: isDark ? Colors.white54 : AppColors.textSecondaryLight),
                                   ),
                                   Text(
                                     product.lote ?? 'LOT-2026-0820-A',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                                    ),
+                                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimaryLight),
                                   ),
                                 ],
                               ),
@@ -938,18 +1236,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 children: [
                                   Text(
                                     'Reg. Sanitario / INVIMA:',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                                    ),
+                                    style: GoogleFonts.inter(fontSize: 12, color: isDark ? Colors.white54 : AppColors.textSecondaryLight),
                                   ),
                                   Text(
-                                    product.registroSanitario ?? 'NSA-000982-2024',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                                    ),
+                                    product.registroSanitario ?? 'INVIMA NSA-000982-2024',
+                                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimaryLight),
                                   ),
                                 ],
                               ),
@@ -958,26 +1249,12 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Versión Ficha Técnica:',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                                    ),
+                                    'Vida Útil:',
+                                    style: GoogleFonts.inter(fontSize: 12, color: isDark ? Colors.white54 : AppColors.textSecondaryLight),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE0F2FE),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      'v1.2 (Vigente)',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF0369A1),
-                                      ),
-                                    ),
+                                  Text(
+                                    product.vidaUtil ?? '30 días',
+                                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimaryLight),
                                   ),
                                 ],
                               ),
@@ -986,7 +1263,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Close action row
+                        // Close button
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(

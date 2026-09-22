@@ -20,9 +20,12 @@ class MockProductsRepository {
   static final List<Product> _initialProducts = [
     Product(
       id: 'prod_001',
-      name: 'Hamburguesa Especial',
-      description: 'Hamburguesa con doble carne, queso, lechuga, tomate y salsas especiales',
-      price: 15000,
+      name: 'Hamburguesa Doble Carne & Tocineta',
+      description: 'Para los más exigentes: Doble carne 150g (300g total), doble queso cheddar, doble tocineta crujiente, cebolla caramelizada y salsa especial.',
+      price: 25000,
+      costoEstimado: 13396,
+      margenGanancia: 46,
+      statusString: 'Disponible',
       categoryId: 'cat_01',
       categoryName: 'Hamburguesas',
       emoji: '🍔',
@@ -30,12 +33,45 @@ class MockProductsRepository {
       isPopular: true,
       totalSold: 245,
       createdAt: DateTime(2026, 1, 15),
+      lote: 'LOT-2026-0820-A',
+      registroSanitario: 'INVIMA NSA-000982-2024',
+      trazabilidadInfo: 'Carne suministrada por Frigorífico Central S.A.S. Lote Carne #8841.',
+      vidaUtil: '30 días',
+      insumos: const [
+        {'nombre': 'Pan Brioche Artesanal', 'cantidad': '1 und'},
+        {'nombre': 'Carne de Res Molida 80/20', 'cantidad': '0.3 kg'},
+        {'nombre': 'Queso Cheddar en Lonchas', 'cantidad': '2 und'},
+        {'nombre': 'Tocineta Ahumada en Tiras', 'cantidad': '0.06 kg'},
+        {'nombre': 'Cebolla Cabezona Blanca', 'cantidad': '0.04 kg'},
+      ],
+      adiciones: const [
+        {'nombre': 'Extra Tocineta Ahumada (2 tiras)', 'precio': 3500.0},
+        {'nombre': 'Extra Queso Cheddar (2 lonchas)', 'precio': 2500.0},
+        {'nombre': 'Porción Papas a la Francesa (150g)', 'precio': 5000.0},
+        {'nombre': 'Porción Cebolla Caramelizada', 'precio': 2000.0},
+        {'nombre': 'Jalapeños Picantes Extra (40g)', 'precio': 2000.0},
+        {'nombre': 'Salsa Chazin Especial Adicional', 'precio': 1500.0},
+      ],
+      variantes: const [
+        {'nombre': 'Doble Carne 300g', 'precio': 25000.0},
+      ],
+      resenas: const [
+        {
+          'usuario': 'Juan Albeiro Perez Oso',
+          'comentario': 'Tremenda hamburguesa, las dos carnes son jugosas y el queso cheddar bien derretido. Muy recomendada.',
+          'calificacion': 5.0,
+          'fecha': '8/9/2026'
+        }
+      ],
     ),
     Product(
       id: 'prod_002',
       name: 'Papas Fritas Medianas',
-      description: 'Papas fritas crujientes con sal',
+      description: 'Papas fritas crujientes estilo crinkle con sal marina y aderezo especial de la casa',
       price: 6000,
+      costoEstimado: 2500,
+      margenGanancia: 58,
+      statusString: 'Disponible',
       categoryId: 'cat_02',
       categoryName: 'Acompañamientos',
       emoji: '🍟',
@@ -43,6 +79,18 @@ class MockProductsRepository {
       isPopular: true,
       totalSold: 420,
       createdAt: DateTime(2026, 1, 15),
+      lote: 'LOT-PAP-2026-101',
+      registroSanitario: 'INVIMA NSA-001420-2024',
+      vidaUtil: '60 días',
+      insumos: const [
+        {'nombre': 'Papas Crinkle Congeladas', 'cantidad': '0.2 kg'},
+        {'nombre': 'Aceite Vegetal Frito', 'cantidad': '0.05 L'},
+        {'nombre': 'Sal Fina Marina', 'cantidad': '0.005 kg'},
+      ],
+      adiciones: const [
+        {'nombre': 'Queso Fundido Adicional', 'precio': 2000.0},
+        {'nombre': 'Tocineta picada', 'precio': 2500.0},
+      ],
     ),
     Product(
       id: 'prod_003',

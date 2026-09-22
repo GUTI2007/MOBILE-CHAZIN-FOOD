@@ -794,17 +794,17 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
+                  color: isDark ? const Color(0xFF1B3B22) : const Color(0xFFE8F5E9),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check, size: 10, color: Color(0xFF2E7D32)),
-                    SizedBox(width: 4),
+                    Icon(Icons.check, size: 10, color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32)),
+                    const SizedBox(width: 4),
                     Text(
                       'Pagado',
-                      style: TextStyle(color: Color(0xFF2E7D32), fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -840,7 +840,7 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3E5F5),
+              color: isDark ? const Color(0xFF3B1C3D) : const Color(0xFFF3E5F5),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -849,7 +849,7 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
                   : order.tipoEntrega == 'domicilio'
                       ? '🛵 Domicilio'
                       : '🏪 Recoger',
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFCE93D8) : Colors.purple),
             ),
           ),
 
@@ -1145,7 +1145,7 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF5F5),
+                      color: isDark ? const Color(0xFF3D1C1C) : const Color(0xFFFFF5F5),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(

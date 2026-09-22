@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimens.dart';
@@ -31,11 +32,42 @@ class AppTheme {
           foregroundColor: AppColors.textPrimaryLight,
           elevation: 0,
           centerTitle: true,
+          systemOverlayStyle: SystemUiOverlayStyle.dark,
           titleTextStyle: GoogleFonts.outfit(
             fontSize: AppDimens.fontXl,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimaryLight,
           ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          titleTextStyle: GoogleFonts.outfit(
+            fontSize: AppDimens.fontXl,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimaryLight,
+          ),
+          contentTextStyle: GoogleFonts.inter(
+            fontSize: AppDimens.fontMd,
+            color: AppColors.textSecondaryLight,
+          ),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          modalBackgroundColor: Colors.white,
+        ),
+        popupMenuTheme: PopupMenuThemeData(
+          color: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          textStyle: GoogleFonts.inter(
+            fontSize: AppDimens.fontMd,
+            color: AppColors.textPrimaryLight,
+          ),
+        ),
+        drawerTheme: const DrawerThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
         ),
         cardTheme: CardThemeData(
           color: AppColors.surfaceLight,
@@ -174,11 +206,42 @@ class AppTheme {
           foregroundColor: AppColors.textPrimaryDark,
           elevation: 0,
           centerTitle: true,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
           titleTextStyle: GoogleFonts.outfit(
             fontSize: AppDimens.fontXl,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimaryDark,
           ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: AppColors.surfaceDark,
+          surfaceTintColor: Colors.transparent,
+          titleTextStyle: GoogleFonts.outfit(
+            fontSize: AppDimens.fontXl,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimaryDark,
+          ),
+          contentTextStyle: GoogleFonts.inter(
+            fontSize: AppDimens.fontMd,
+            color: AppColors.textSecondaryDark,
+          ),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppColors.surfaceDark,
+          surfaceTintColor: Colors.transparent,
+          modalBackgroundColor: AppColors.surfaceDark,
+        ),
+        popupMenuTheme: PopupMenuThemeData(
+          color: AppColors.cardDark,
+          surfaceTintColor: Colors.transparent,
+          textStyle: GoogleFonts.inter(
+            fontSize: AppDimens.fontMd,
+            color: AppColors.textPrimaryDark,
+          ),
+        ),
+        drawerTheme: const DrawerThemeData(
+          backgroundColor: AppColors.surfaceDark,
+          surfaceTintColor: Colors.transparent,
         ),
         cardTheme: CardThemeData(
           color: AppColors.cardDark,

@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/models/product_model.dart';
+import '../../../shared/services/cloudinary_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../providers/products_provider.dart';
 
@@ -212,23 +212,17 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   Future<void> _pickImage() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      if (image != null) {
+      final String? uploadedUrl = await CloudinaryService.pickAndUploadImage(context);
+      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
         setState(() {
-          _imageUrl = image.path;
+          _imageUrl = uploadedUrl;
         });
       }
     } catch (e) {
       if (mounted) {
         CustomToast.show(
           context,
-          title: 'Error al seleccionar imagen',
+          title: 'Error al cargar imagen',
           message: e.toString(),
           isError: true,
         );

@@ -713,9 +713,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
+                  color: isDark ? const Color(0xFF3E1F21) : const Color(0xFFFEF2F2),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFEE2E2)),
+                  border: Border.all(color: isDark ? const Color(0xFF5A2A2D) : const Color(0xFFFEE2E2)),
                 ),
                 child: Row(
                   children: [
@@ -730,14 +730,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
-                              color: const Color(0xFF7F1D1D),
+                              color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF7F1D1D),
                             ),
                           ),
                           Text(
                             a['qty']!,
                             style: GoogleFonts.inter(
                               fontSize: 11,
-                              color: const Color(0xFF991B1B),
+                              color: isDark ? const Color(0xFFF87171) : const Color(0xFF991B1B),
                             ),
                           ),
                         ],
@@ -920,9 +920,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         final titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
         final subtitleColor = isDark ? Colors.white70 : const Color(0xFF334155);
         final detailColor = isDark ? Colors.white54 : const Color(0xFF64748B);
-        final btnCancelBg = isDark ? Colors.transparent : Colors.white;
-        final btnCancelText = isDark ? Colors.white70 : const Color(0xFF334155);
-        final btnCancelBorder = isDark ? Colors.white24 : const Color(0xFFCBD5E1);
 
         return Dialog(
           backgroundColor: dialogBg,
