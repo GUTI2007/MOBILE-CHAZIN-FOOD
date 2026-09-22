@@ -3,59 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
-
-
-/// Modelo simple de cliente
-class Client {
-  final String id;
-  final String name;
-  final String email;
-  final String phone;
-  final int totalOrders;
-  final double totalSpent;
-  final DateTime lastOrder;
-  final bool isActive;
-
-  const Client({
-    required this.id,
-    required this.name,
-    required this.email,
-    required this.phone,
-    required this.totalOrders,
-    required this.totalSpent,
-    required this.lastOrder,
-    this.isActive = true,
-  });
-}
-
-/// Mock data de clientes
-final _mockClients = [
-  Client(
-    id: 'cli_001', name: 'Carlos Rodríguez', email: 'carlos@email.com',
-    phone: '+57 300 123 4567', totalOrders: 24, totalSpent: 456000,
-    lastOrder: DateTime(2026, 6, 28),
-  ),
-  Client(
-    id: 'cli_002', name: 'María González', email: 'maria@email.com',
-    phone: '+57 310 234 5678', totalOrders: 18, totalSpent: 312000,
-    lastOrder: DateTime(2026, 6, 30),
-  ),
-  Client(
-    id: 'cli_003', name: 'Andrés López', email: 'andres@email.com',
-    phone: '+57 320 345 6789', totalOrders: 31, totalSpent: 625000,
-    lastOrder: DateTime(2026, 7, 1),
-  ),
-  Client(
-    id: 'cli_004', name: 'Laura Martínez', email: 'laura@email.com',
-    phone: '+57 315 456 7890', totalOrders: 12, totalSpent: 198000,
-    lastOrder: DateTime(2026, 6, 25),
-  ),
-  Client(
-    id: 'cli_005', name: 'Juan Pérez', email: 'juan@email.com',
-    phone: '+57 301 567 8901', totalOrders: 8, totalSpent: 145000,
-    lastOrder: DateTime(2026, 6, 20),
-  ),
-];
+import '../../../shared/models/client_model.dart';
+import '../providers/clients_provider.dart';
 
 /// Pantalla de gestión de clientes — sub-ítem de Ventas en drawer
 class ClientListScreen extends ConsumerWidget {
@@ -64,6 +13,7 @@ class ClientListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final clientsAsync = ref.watch(clientsListProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -89,116 +39,134 @@ class ClientListScreen extends ConsumerWidget {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ─── Header ───
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Gestión de Clientes',
-                  style: GoogleFonts.outfit(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Administra los clientes del negocio',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                  ),
-                ),
-              ],
-            ),
+      body: clientsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (err, stack) => Center(
+          child: Text(
+            'Error al cargar clientes: $err',
+            style: GoogleFonts.inter(color: isDark ? Colors.white70 : AppColors.textPrimaryLight),
           ),
-          const SizedBox(height: 16),
-
-          // ─── Stats Row ───
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                _clientStat(
-                  icon: Icons.people_outline,
-                  iconColor: const Color(0xFF3B82F6),
-                  label: 'Total Clientes',
-                  value: _mockClients.length.toString(),
-                  isDark: isDark,
-                ),
-                const SizedBox(width: 12),
-                _clientStat(
-                  icon: Icons.star_rounded,
-                  iconColor: const Color(0xFFF59E0B),
-                  label: 'Más Frecuente',
-                  value: 'Andrés L.',
-                  isDark: isDark,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ─── Search ───
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Buscar cliente...',
-                hintStyle: GoogleFonts.inter(
-                  color: isDark ? Colors.white30 : AppColors.grey400,
-                  fontSize: 14,
-                ),
-                prefixIcon: Icon(Icons.search_rounded, color: isDark ? Colors.white38 : AppColors.grey400),
-                filled: true,
-                fillColor: isDark ? AppColors.cardDark : AppColors.grey50,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primary),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ─── Client List ───
-          Expanded(
-            child: AnimationLimiter(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _mockClients.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final client = _mockClients[index];
-                  return AnimationConfiguration.staggeredList(
-                    position: index,
-                    duration: const Duration(milliseconds: 400),
-                    child: SlideAnimation(
-                      verticalOffset: 30,
-                      child: FadeInAnimation(
-                        child: _ClientCard(client: client, isDark: isDark),
+        ),
+        data: (clients) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── Header ───
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Gestión de Clientes',
+                      style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.textPrimaryLight,
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 4),
+                    Text(
+                      'Administra los clientes del negocio',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
+              const SizedBox(height: 16),
+
+              // ─── Stats Row ───
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    _clientStat(
+                      icon: Icons.people_outline,
+                      iconColor: const Color(0xFF3B82F6),
+                      label: 'Total Clientes',
+                      value: clients.length.toString(),
+                      isDark: isDark,
+                    ),
+                    const SizedBox(width: 12),
+                    _clientStat(
+                      icon: Icons.star_rounded,
+                      iconColor: const Color(0xFFF59E0B),
+                      label: 'Más Frecuente',
+                      value: clients.isNotEmpty ? clients.first.name : '-',
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ─── Search ───
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Buscar cliente...',
+                    hintStyle: GoogleFonts.inter(
+                      color: isDark ? Colors.white30 : AppColors.grey400,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: Icon(Icons.search_rounded, color: isDark ? Colors.white38 : AppColors.grey400),
+                    filled: true,
+                    fillColor: isDark ? AppColors.cardDark : AppColors.grey50,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.grey200),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ─── Client List ───
+              Expanded(
+                child: clients.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No hay clientes registrados',
+                          style: GoogleFonts.inter(color: isDark ? Colors.white54 : AppColors.textSecondaryLight),
+                        ),
+                      )
+                    : AnimationLimiter(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: clients.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final client = clients[index];
+                            return AnimationConfiguration.staggeredList(
+                              position: index,
+                              duration: const Duration(milliseconds: 400),
+                              child: SlideAnimation(
+                                verticalOffset: 30,
+                                child: FadeInAnimation(
+                                  child: _ClientCard(client: client, isDark: isDark),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -302,7 +270,7 @@ class _ClientCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${client.totalOrders} pedidos • ${client.phone}',
+                  client.phone ?? 'Sin teléfono',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: isDark ? Colors.white54 : AppColors.textSecondaryLight,

@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../config/api/api_client.dart';
 import '../../../shared/models/sale_model.dart';
 import '../../../shared/models/client_model.dart';
 import '../../../shared/models/product_model.dart';
-import '../data/mock_sales_repository.dart';
+import '../data/sales_repository.dart';
 
 /// Provider del repositorio
-final salesRepositoryProvider = Provider<MockSalesRepository>((ref) {
-  return MockSalesRepository();
+final salesRepositoryProvider = Provider<SalesRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return SalesRepository(apiClient);
 });
 
 // ════════════════════════════════════════════
@@ -38,7 +40,7 @@ class SalesState {
 }
 
 class SalesNotifier extends StateNotifier<SalesState> {
-  final MockSalesRepository _repository;
+  final SalesRepository _repository;
 
   SalesNotifier(this._repository) : super(const SalesState());
 
@@ -134,7 +136,7 @@ class NewSaleState {
 }
 
 class NewSaleNotifier extends StateNotifier<NewSaleState> {
-  final MockSalesRepository _repository;
+  final SalesRepository _repository;
 
   NewSaleNotifier(this._repository) : super(const NewSaleState());
 

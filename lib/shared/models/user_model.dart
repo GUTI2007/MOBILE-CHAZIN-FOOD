@@ -142,3 +142,33 @@ class User {
 
   bool get isAdmin => role == UserRole.admin;
 }
+
+/// Resultado de autenticación
+class AuthResult {
+  final bool isSuccess;
+  final User? user;
+  final String? token;
+  final String? errorMessage;
+
+  const AuthResult._({
+    required this.isSuccess,
+    this.user,
+    this.token,
+    this.errorMessage,
+  });
+
+  factory AuthResult.success({required User user, String? token}) {
+    return AuthResult._(
+      isSuccess: true,
+      user: user,
+      token: token,
+    );
+  }
+
+  factory AuthResult.failure(String errorMessage) {
+    return AuthResult._(
+      isSuccess: false,
+      errorMessage: errorMessage,
+    );
+  }
+}

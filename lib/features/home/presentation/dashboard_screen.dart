@@ -153,7 +153,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             iconBg: const Color(0xFFFEE2E2),
                             label: 'Productos',
                             value: '${stats.productosTotal}',
-                            trendText: '⚠ ${stats.insumosBajoStock} bajo stock',
+                            trendText: '${stats.insumosBajoStock} bajo stock',
                             trendColor: const Color(0xFFEF4444),
                             isDark: isDark,
                           ),

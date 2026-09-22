@@ -8,6 +8,8 @@ import '../../../core/utils/helpers.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
 import '../providers/products_provider.dart';
+import '../../events/providers/events_provider.dart';
+import '../../../shared/models/event_model.dart';
 import 'product_form_screen.dart';
 
 import '../../../routes/app_shell.dart';
@@ -2659,17 +2661,17 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                   _showToastAlert(
                                     title: 'Error de Validación',
                                     message: 'Ingrese una cantidad de insumo válida y mayor a 0',
-                                    isError: true,
-                                  );
-                                  return;
-                                }
-                              }
+                                     isError: true,
+                                   );
+                                   return;
+                                 }
+                               }
 
-                              final newEvent = ProductEvent(
+                               final newEvent = ProductEvent(
                                 id: 'evt_${DateTime.now().millisecondsSinceEpoch}',
                                 productId: product.id,
                                 productName: product.name,
-                                productEmoji: product.emoji,
+                                productEmoji: '',
                                 type: selectedEventType,
                                 title: titleText,
                                 description: descriptionController.text.trim(),
@@ -2685,6 +2687,24 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 createdAt: DateTime.now(),
                                 isActive: true,
                               );
+
+                              // Persistir evento en la API real Backend /api/eventos
+                              final apiEvent = Event(
+                                nombre: titleText,
+                                descripcion: descriptionController.text.trim(),
+                                fechaInicio: isTemporal && startDate != null ? "${startDate!.year}-${startDate!.month.toString().padLeft(2, '0')}-${startDate!.day.toString().padLeft(2, '0')}" : null,
+                                fechaFin: isTemporal && endDate != null ? "${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}" : null,
+                                estado: 'Activo',
+                                idProducto: product.id,
+                                tipoEvento: selectedEventType,
+                                descuento: double.tryParse(discountPercentageController.text),
+                                nuevoPrecio: double.tryParse(promoPriceController.text),
+                                accionInsumo: action,
+                                insumosAsociados: selectedEventType.startsWith('insumo') ? [{'nombre': insumoNameController.text.trim(), 'cantidad': quantityController.text.trim(), 'unidad': selectedUnit}] : null,
+                                isTemporal: isTemporal,
+                              );
+
+                              ref.read(eventsProvider.notifier).createEvent(apiEvent);
 
                               // Rebuild main list screen to update badges/chips
                               setState(() {

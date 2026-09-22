@@ -41,6 +41,30 @@ class SaleDetail {
     required this.subtotal,
     this.addOns = const [],
   });
+
+  factory SaleDetail.fromJson(Map<String, dynamic> json) {
+    return SaleDetail(
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      productId: json['productId']?.toString() ?? json['productoId']?.toString() ?? json['producto']?.toString() ?? '',
+      productName: json['productName'] ?? json['nombreProducto'] ?? json['productoNombre'] ?? '',
+      unitPrice: (json['unitPrice'] ?? json['precioUnitario'] ?? json['precio'] ?? 0).toDouble(),
+      quantity: (json['quantity'] ?? json['cantidad'] ?? 1).toInt(),
+      subtotal: (json['subtotal'] ?? 0).toDouble(),
+      addOns: (json['addOns'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'productId': productId,
+      'productName': productName,
+      'unitPrice': unitPrice,
+      'quantity': quantity,
+      'subtotal': subtotal,
+      'addOns': addOns,
+    };
+  }
 }
 
 /// Venta
@@ -134,4 +158,97 @@ class Sale {
   /// Subtotal with IVA calculation
   double get iva => subtotal * 0.19;
   double get totalWithIva => subtotal + iva;
+
+  factory Sale.fromJson(Map<String, dynamic> json) {
+    PaymentMethod parsePaymentMethod(String? pm) {
+      if (pm == null) return PaymentMethod.cash;
+      switch (pm.toLowerCase()) {
+        case 'card':
+        case 'tarjeta':
+          return PaymentMethod.card;
+        case 'transfer':
+        case 'transferencia':
+          return PaymentMethod.transfer;
+        default:
+          return PaymentMethod.cash;
+      }
+    }
+
+    SaleStatus parseStatus(String? st) {
+      if (st == null) return SaleStatus.completed;
+      switch (st.toLowerCase()) {
+        case 'pending':
+        case 'pendiente':
+          return SaleStatus.pending;
+        case 'cancelled':
+        case 'cancelada':
+        case 'cancelado':
+          return SaleStatus.cancelled;
+        default:
+          return SaleStatus.completed;
+      }
+    }
+
+    DeliveryType parseDelivery(String? dt) {
+      if (dt == null) return DeliveryType.dineIn;
+      switch (dt.toLowerCase()) {
+        case 'delivery':
+        case 'domicilio':
+          return DeliveryType.delivery;
+        case 'takeout':
+        case 'parallevar':
+        case 'para llevar':
+          return DeliveryType.takeout;
+        default:
+          return DeliveryType.dineIn;
+      }
+    }
+
+    final rawDetails = json['details'] ?? json['detalles'] ?? json['items'] ?? [];
+    List<SaleDetail> detailsList = [];
+    if (rawDetails is List) {
+      detailsList = rawDetails
+          .whereType<Map<String, dynamic>>()
+          .map((d) => SaleDetail.fromJson(d))
+          .toList();
+    }
+
+    return Sale(
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      clientId: json['clientId']?.toString() ?? json['clienteId']?.toString() ?? '',
+      clientName: json['clientName'] ?? json['nombreCliente'] ?? json['clienteNombre'] ?? 'Cliente General',
+      details: detailsList,
+      subtotal: (json['subtotal'] ?? json['montoTotal'] ?? 0).toDouble(),
+      discount: (json['discount'] ?? json['descuento'] ?? 0).toDouble(),
+      total: (json['total'] ?? json['montoTotal'] ?? json['totalVenta'] ?? 0).toDouble(),
+      paymentMethod: parsePaymentMethod(json['paymentMethod']?.toString() ?? json['metodoPago']?.toString()),
+      status: parseStatus(json['status']?.toString() ?? json['estado']?.toString()),
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : (json['fecha'] != null
+              ? DateTime.tryParse(json['fecha'].toString()) ?? DateTime.now()
+              : DateTime.now()),
+      endAt: json['endAt'] != null ? DateTime.tryParse(json['endAt'].toString()) : null,
+      deliveryType: parseDelivery(json['deliveryType']?.toString() ?? json['tipoEntrega']?.toString()),
+      notes: json['notes'] ?? json['notas'] ?? json['observaciones'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'clientId': clientId,
+      'clientName': clientName,
+      'details': details.map((d) => d.toJson()).toList(),
+      'subtotal': subtotal,
+      'discount': discount,
+      'total': total,
+      'paymentMethod': paymentMethod.name,
+      'status': status.name,
+      'createdAt': createdAt.toIso8601String(),
+      'endAt': endAt?.toIso8601String(),
+      'deliveryType': deliveryType.name,
+      'notes': notes,
+    };
+  }
 }

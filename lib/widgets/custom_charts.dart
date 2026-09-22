@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../models/order.dart';
+import '../features/sales/data/order.dart';
 
 // --- Daily Revenue Bar Chart with Interactive Tooltip ---
 class DailyRevenueChart extends StatefulWidget {

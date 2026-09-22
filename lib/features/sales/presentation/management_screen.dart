@@ -764,10 +764,10 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
   // --- Order card item in Pedidos tab (Capture 2 details) ---
   Widget _orderCard(Order order, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
     String paymentLabel = order.metodoPago == 'efectivo'
-        ? '💵 Efectivo'
+        ? 'Efectivo'
         : order.metodoPago == 'tarjeta'
-            ? '💳 Tarjeta'
-            : '📲 Transferencia';
+            ? 'Tarjeta'
+            : 'Transferencia';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -845,10 +845,10 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
             ),
             child: Text(
               order.tipoEntrega == 'mesa'
-                  ? '🍽️ En Mesa'
+                  ? 'En Mesa'
                   : order.tipoEntrega == 'domicilio'
-                      ? '🛵 Domicilio'
-                      : '🏪 Recoger',
+                      ? 'Domicilio'
+                      : 'Recoger',
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFCE93D8) : Colors.purple),
             ),
           ),

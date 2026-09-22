@@ -56,7 +56,7 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) {
-          debugPrint('❌ ApiClient Error [${error.response?.statusCode}]: ${error.message}');
+          debugPrint('ApiClient Error [${error.response?.statusCode}]: ${error.message}');
           return handler.next(error);
         },
       ),
@@ -68,7 +68,7 @@ class ApiClient {
         LogInterceptor(
           requestBody: true,
           responseBody: true,
-          logPrint: (obj) => debugPrint('🌐 [HTTP] $obj'),
+          logPrint: (obj) => debugPrint('[HTTP] $obj'),
         ),
       );
     }

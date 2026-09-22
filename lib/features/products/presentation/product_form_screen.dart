@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/models/product_model.dart';
+import '../../../config/api/api_client.dart';
 import '../../../shared/services/cloudinary_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../providers/products_provider.dart';
@@ -41,19 +42,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   late final TextEditingController _diasCaducidadController;
   bool _trazabilidadExpanded = true;
 
-  final List<Map<String, dynamic>> _mockInsumos = [
-    {'name': 'Lechuga', 'category': 'Verduras', 'price': '\$2.000/und', 'unit': 'und'},
-    {'name': 'Pollo', 'category': 'Proteínas', 'price': '\$12.000/kg', 'unit': 'kg'},
-    {'name': 'Queso Mozzarella', 'category': 'Lácteos', 'price': '\$18.000/kg', 'unit': 'kg'},
-    {'name': 'Salchicha Premium', 'category': 'Proteínas', 'price': '\$15.000/kg', 'unit': 'kg'},
-    {'name': 'Salsa BBQ', 'category': 'Condimentos', 'price': '\$4.000/und', 'unit': 'und'},
-    {'name': 'Pan de hamburguesa', 'category': 'Panadería', 'price': '\$1.500/und', 'unit': 'und'},
-    {'name': 'Papas a la francesa', 'category': 'Verduras', 'price': '\$3.000/kg', 'unit': 'kg'},
-    {'name': 'Carne de hamburguesa 150g', 'category': 'Proteínas', 'price': '\$4.500/und', 'unit': 'und'},
-    {'name': 'Tocineta Ahumada', 'category': 'Proteínas', 'price': '\$22.000/kg', 'unit': 'kg'},
-    {'name': 'Queso Cheddar rebanado', 'category': 'Lácteos', 'price': '\$20.000/kg', 'unit': 'kg'},
-    {'name': 'Salsa de ajo especial', 'category': 'Condimentos', 'price': '\$3.500/und', 'unit': 'und'},
-  ];
+  List<Map<String, dynamic>> _realInsumos = [];
 
   List<Map<String, dynamic>> _adicionesIngredientes = [];
   List<Map<String, dynamic>> _salsas = [];
@@ -114,6 +103,30 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       {'nombre': 'Gaseosa 350ml', 'precio': 4000.0},
       {'nombre': 'Jugo natural', 'precio': 5000.0},
     ];
+    Future.microtask(() => _fetchRealInsumos());
+  }
+
+  Future<void> _fetchRealInsumos() async {
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final res = await apiClient.get('/insumos');
+      if (res.statusCode == 200 && res.data is List) {
+        final List list = res.data;
+        if (mounted) {
+          setState(() {
+            _realInsumos = list.map((item) {
+              final m = Map<String, dynamic>.from(item);
+              return {
+                'name': m['nombreInsumo'] ?? m['nombre'] ?? '',
+                'category': m['categoria'] ?? m['nombreCategoria'] ?? 'Insumos',
+                'price': m['costoUnidad'] != null ? '\$${m['costoUnidad']}' : '\$0',
+                'unit': m['unidadMedida'] ?? m['unidad'] ?? 'und',
+              };
+            }).toList();
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   void _onSearchChanged() {
@@ -122,7 +135,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       setState(() => _filteredInsumos = []);
     } else {
       setState(() {
-        _filteredInsumos = _mockInsumos
+        _filteredInsumos = _realInsumos
             .where((insumo) => insumo['name'].toString().toLowerCase().contains(query))
             .toList();
       });
