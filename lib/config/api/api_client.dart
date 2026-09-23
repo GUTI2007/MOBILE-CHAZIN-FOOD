@@ -8,6 +8,9 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 /// Configuración centralizada del cliente HTTP Dio para la App Móvil Chazin Food
 class ApiClient {
+  /// IP local IPv4 de la máquina de desarrollo (para celular físico APK)
+  static const String localServerIp = '192.168.40.23';
+
   /// Determina la URL base de la API de forma configurable y según el entorno de ejecución
   static String get defaultBaseUrl {
     const envUrl = String.fromEnvironment('API_URL');
@@ -18,11 +21,16 @@ class ApiClient {
       return 'http://localhost:5000/api';
     }
     if (Platform.isAndroid) {
-      // Android Emulator utiliza 10.0.2.2 para comunicarse con el puerto host
-      return 'http://10.0.2.2:5000/api';
+      // Si se especifica --dart-define=USE_EMULATOR=true usa la IP especial del emulador (10.0.2.2)
+      // Por defecto para APK / dispositivo físico usa la IP local de la PC (http://192.168.40.23:5000/api)
+      const useEmulator = bool.fromEnvironment('USE_EMULATOR', defaultValue: false);
+      if (useEmulator) {
+        return 'http://10.0.2.2:5000/api';
+      }
+      return 'http://$localServerIp:5000/api';
     }
-    // iOS Simulator / Desktop / Web por defecto
-    return 'http://localhost:5000/api';
+    // Desktop / iOS por defecto
+    return 'http://$localServerIp:5000/api';
   }
 
   static const Duration connectTimeout = Duration(seconds: 10);

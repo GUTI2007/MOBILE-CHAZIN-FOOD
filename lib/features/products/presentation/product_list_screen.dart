@@ -627,10 +627,13 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
   }
 
-  void _navigateToForm(BuildContext context, {Product? product}) {
-    Navigator.of(context).push(
+  Future<void> _navigateToForm(BuildContext context, {Product? product}) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ProductFormScreen(product: product)),
     );
+    if (mounted) {
+      await ref.read(productsProvider.notifier).loadProducts();
+    }
   }
 
   void _confirmDelete(BuildContext context, Product product) {
@@ -638,19 +641,35 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar producto'),
-        content: Text('¿Eliminar "${product.name}"?'),
+        content: Text('¿Deseas eliminar "${product.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () {
-              ref.read(productsProvider.notifier).deleteProduct(product.id);
+            onPressed: () async {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Producto eliminado')),
-              );
+              try {
+                await ref.read(productsProvider.notifier).deleteProduct(product.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Producto "${product.name}" eliminado correctamente'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error al eliminar: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Eliminar'),
@@ -3407,20 +3426,24 @@ class _FigmaProductCard extends StatelessWidget {
   Widget _actionBtn(IconData icon, String label, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
