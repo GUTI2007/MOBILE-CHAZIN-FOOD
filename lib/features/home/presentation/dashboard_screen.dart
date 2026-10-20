@@ -743,23 +743,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        _showReabastecerDialog(context, a, isDark);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE25858),
-                          borderRadius: BorderRadius.circular(8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF5A2A2D) : const Color(0xFFFFE4E6),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA),
                         ),
-                        child: Text(
-                          'Reabastecer',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      ),
+                      child: Text(
+                        'Bajo stock',
+                        style: GoogleFonts.inter(
+                          color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -906,148 +904,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       buffer.write(str[i]);
     }
     return buffer.toString();
-  }
-
-  void _showReabastecerDialog(BuildContext context, Map<String, String> alert, bool isDark) {
-    final qtyParts = alert['qty']!.split('/');
-    final currentStock = qtyParts.isNotEmpty ? qtyParts[0].trim() : '0';
-    final minStock = qtyParts.length > 1 ? qtyParts[1].trim() : '0';
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        final dialogBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
-        final titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
-        final subtitleColor = isDark ? Colors.white70 : const Color(0xFF334155);
-        final detailColor = isDark ? Colors.white54 : const Color(0xFF64748B);
-
-        return Dialog(
-          backgroundColor: dialogBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Warning icon in light red circle container
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.error_outline_rounded,
-                    color: Color(0xFFEF4444),
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Title
-                Text(
-                  'Reabastecer Insumo',
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: titleColor,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                // Subtitle
-                Text(
-                  alert['name']!,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: subtitleColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Stock details
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: detailColor,
-                    ),
-                    children: [
-                      const TextSpan(text: 'Stock actual: '),
-                      TextSpan(
-                        text: currentStock,
-                        style: const TextStyle(
-                          color: Color(0xFFEF4444),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      TextSpan(text: ' / Mínimo: $minStock'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Info banner explaining replenishment is web-only
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFBFDBFE),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'El reabastecimiento de insumos debe gestionarse desde la plataforma web.',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E40AF),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Action Button (Single button: Entendido)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE25858),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: Text(
-                      'Entendido',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 

@@ -40,7 +40,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     // 3 tabs del bottom nav
     final screens = <Widget>[
       const DashboardScreen(),
-      const ProductListScreen(), // Producción → Productos
+      const ProductListScreen(), // Productos
       const ManagementScreen(),
     ];
 
@@ -53,11 +53,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       key: AppShell.scaffoldKey,
       drawer: _ChazinDrawer(
         scaffoldKey: AppShell.scaffoldKey,
-        currentIndex: currentIndex,
-        onNavigate: (index) {
-          ref.read(appShellIndexProvider.notifier).state = index;
-          Navigator.of(context).pop(); // close drawer
-        },
       ),
       body: IndexedStack(
         index: currentIndex,
@@ -91,7 +86,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             BottomNavigationBarItem(
               icon: Icon(Icons.restaurant_menu_outlined),
               activeIcon: Icon(Icons.restaurant_menu_rounded),
-              label: 'Producción',
+              label: 'Productos',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.trending_up_rounded),
@@ -112,13 +107,9 @@ class _AppShellState extends ConsumerState<AppShell> {
 
 class _ChazinDrawer extends ConsumerStatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
-  final int currentIndex;
-  final void Function(int) onNavigate;
 
   const _ChazinDrawer({
     required this.scaffoldKey,
-    required this.currentIndex,
-    required this.onNavigate,
   });
 
   @override
@@ -126,9 +117,6 @@ class _ChazinDrawer extends ConsumerStatefulWidget {
 }
 
 class _ChazinDrawerState extends ConsumerState<_ChazinDrawer> {
-  bool _produccionExpanded = false;
-  bool _ventasExpanded = false;
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -237,92 +225,96 @@ class _ChazinDrawerState extends ConsumerState<_ChazinDrawer> {
               ),
             ),
 
-            // ─── Menu Items ───
+            // ─── Opciones Principales ───
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  // ADMINISTRACIÓN header
-                  _sectionHeader('ADMINISTRACIÓN'),
-
-                  // Dashboard
-                  _menuItem(
-                    icon: Icons.dashboard_rounded,
-                    label: 'Dashboard',
-                    isActive: widget.currentIndex == 0,
-                    onTap: () => widget.onNavigate(0),
+                  // Hint informativo
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(14),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.primary.withAlpha(40)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.touch_app_rounded, size: 16, color: AppColors.primary.withAlpha(180)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Usa la barra inferior para navegar entre secciones',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
 
-                  // Producción (expandible)
-                  _menuItem(
-                    icon: Icons.restaurant_menu_outlined,
-                    label: 'Producción',
-                    hasChevron: true,
-                    isExpanded: _produccionExpanded,
-                    onTap: () {
-                      setState(() => _produccionExpanded = !_produccionExpanded);
-                    },
-                  ),
-                  if (_produccionExpanded) ...[
-                    _subMenuItem('Productos', onTap: () => widget.onNavigate(1)),
-                  ],
+                  const SizedBox(height: 12),
 
-                  // Ventas (expandible)
-                  _menuItem(
-                    icon: Icons.trending_up_rounded,
-                    label: 'Ventas',
-                    hasChevron: true,
-                    isExpanded: _ventasExpanded,
-                    onTap: () {
-                      setState(() => _ventasExpanded = !_ventasExpanded);
-                    },
-                  ),
-                  if (_ventasExpanded) ...[
-                    _subMenuItem('Gestión de Ventas', onTap: () => widget.onNavigate(2)),
-                  ],
-
-                  const SizedBox(height: 8),
-
-                  // CUENTA header
-                  _sectionHeader('CUENTA'),
+                  // PREFERENCIAS header
+                  _sectionHeader('PREFERENCIAS'),
 
                   // Modo Oscuro
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.dark_mode_outlined,
-                          size: 22,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white60
-                              : AppColors.textSecondaryLight,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isDark ? Icons.dark_mode_rounded : Icons.light_mode_outlined,
+                              size: 22,
+                              color: isDark ? Colors.white60 : AppColors.textSecondaryLight,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                'Modo Oscuro',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
+                                ),
+                              ),
+                            ),
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final isDarkMode = ref.watch(darkModeProvider);
+                                return Switch(
+                                  value: isDarkMode,
+                                  activeTrackColor: AppColors.primary,
+                                  thumbColor: WidgetStateProperty.all(Colors.white),
+                                  onChanged: (v) => ref.read(darkModeProvider.notifier).state = v,
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 14),
-                        Text(
-                          'Modo Oscuro',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white70
-                                : AppColors.textPrimaryLight,
-                          ),
-                        ),
-                        const Spacer(),
-                        Consumer(
-                          builder: (context, ref, _) {
-                            final isDarkMode = ref.watch(darkModeProvider);
-                            return Switch(
-                              value: isDarkMode,
-                              activeTrackColor: AppColors.primary,
-                              onChanged: (v) => ref.read(darkModeProvider.notifier).state = v,
-                            );
-                          },
-                        ),
-                      ],
+                      ),
                     ),
                   ),
+
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Divider(
+                      color: isDark ? Colors.white12 : AppColors.grey200,
+                      height: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
 
                   // Cerrar Sesión
                   _menuItem(
@@ -330,9 +322,8 @@ class _ChazinDrawerState extends ConsumerState<_ChazinDrawer> {
                     label: 'Cerrar Sesión',
                     textColor: AppColors.primary,
                     onTap: () {
-                      // Capture the scaffold's stable context BEFORE closing the drawer
                       final scaffoldCtx = widget.scaffoldKey.currentContext!;
-                      Navigator.of(context).pop(); // Close drawer immediately!
+                      Navigator.of(context).pop();
                       _showLogoutDialog(scaffoldCtx);
                     },
                   ),
@@ -420,27 +411,6 @@ class _ChazinDrawerState extends ConsumerState<_ChazinDrawer> {
     );
   }
 
-  Widget _subMenuItem(String label, {required VoidCallback onTap}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(left: 52, right: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: isDark ? Colors.white60 : AppColors.textSecondaryLight,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   void _showLogoutDialog(BuildContext parentContext) {
     final isDark = Theme.of(parentContext).brightness == Brightness.dark;

@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_shell.dart';
 import '../data/order.dart';
+import '../providers/orders_provider.dart';
+import '../../../services/excel_export_service.dart';
 import 'widgets/custom_charts.dart';
 
-class ManagementScreen extends StatefulWidget {
+class ManagementScreen extends ConsumerStatefulWidget {
   const ManagementScreen({super.key});
 
   @override
-  State<ManagementScreen> createState() => _ManagementScreenState();
+  ConsumerState<ManagementScreen> createState() => _ManagementScreenState();
 }
 
-class _ManagementScreenState extends State<ManagementScreen> with SingleTickerProviderStateMixin {
+class _ManagementScreenState extends ConsumerState<ManagementScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _searchQuery = '';
   String _fechaFiltro = '';
@@ -63,9 +66,9 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
     }
   }
 
-  List<Order> _getFilteredOrders() {
+  List<Order> _getFilteredOrdersFrom(List<Order> source) {
     final rango = _getRangoFecha();
-    return pedidosMock.where((p) {
+    return source.where((p) {
       final matchSearch = p.cliente.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           p.id.toLowerCase().contains(_searchQuery.toLowerCase());
       final matchFecha = _fechaFiltro.isEmpty || p.fecha == _fechaFiltro;
@@ -148,9 +151,13 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final filteredOrders = _getFilteredOrders();
+    // Leer estado del provider (API real con fallback a mock)
+    final ordersState = ref.watch(ordersProvider);
+    // Sobreescribir la lista base con la del provider para que los filtros trabajen sobre datos reales
+    final allOrders = ordersState.orders;
+    final filteredOrders = _getFilteredOrdersFrom(allOrders);
 
-    // Calculable statistics from active mock orders
+    // Calculable statistics from active orders
     double totalVentas = filteredOrders.fold(0.0, (sum, item) => sum + item.total);
     double ticketPromedio = filteredOrders.isEmpty ? 0.0 : totalVentas / filteredOrders.length;
     double totalDescuentos = filteredOrders.fold(0.0, (sum, item) => sum + (item.subtotal * (item.descuento / 100)));
@@ -187,6 +194,40 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
           ],
         ),
         centerTitle: true,
+        actions: [
+          // Badge de mock/API
+          if (ordersState.usingMock)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Tooltip(
+                message: 'Usando datos de demo (sin conexión a API)',
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withAlpha(40),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.orange.withAlpha(80)),
+                  ),
+                  child: const Text('Demo', style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
+          // Botón refrescar
+          IconButton(
+            tooltip: 'Actualizar pedidos',
+            icon: ordersState.isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded),
+            onPressed: ordersState.isLoading
+                ? null
+                : () => ref.read(ordersProvider.notifier).refresh(),
+          ),
+        ],
       ),
       body: SafeArea(
         child: NestedScrollView(
@@ -256,7 +297,7 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
               _buildPedidosTab(filteredOrders, surfaceColor, textPrimary, textSecondary, borderColor, isDark, cardColor, backgroundColor),
 
               // Tab 2: Historial
-              _buildHistorialTab(cardColor, textPrimary, textSecondary, borderColor, isDark),
+              _buildHistorialTab(cardColor, textPrimary, textSecondary, borderColor, isDark, allOrders),
 
               // Tab 3: Reportes
               _buildReportesTab(filteredOrders, cardColor, textPrimary, textSecondary, borderColor, isDark, surfaceColor),
@@ -879,9 +920,9 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
   }
 
   // --- Tab 2: Historial Tab builder (Capture 4 Style, horizontal-overflow safe Wrap) ---
-  Widget _buildHistorialTab(Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
+  Widget _buildHistorialTab(Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark, List<Order> allOrders) {
     final rango = _getRangoFecha();
-    final historical = [...pedidosMock].where((p) {
+    final historical = [...allOrders].where((p) {
       bool matchPeriodo = true;
       if (rango['desde']!.isNotEmpty) {
         matchPeriodo = matchPeriodo && p.fecha.compareTo(rango['desde']!) >= 0;
@@ -915,12 +956,17 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary),
               ),
               OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('¡Historial exportado correctamente!'),
-                      backgroundColor: Colors.green,
-                    ),
+                onPressed: () async {
+                  if (historical.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No hay pedidos para exportar en este período')),
+                    );
+                    return;
+                  }
+                  await ExcelExportService.instance.exportHistorial(
+                    historical,
+                    _periodoLabel,
+                    context,
                   );
                 },
                 icon: Icon(Icons.download, size: 14, color: textPrimary),
@@ -1124,12 +1170,19 @@ class _ManagementScreenState extends State<ManagementScreen> with SingleTickerPr
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('¡Reportes exportados correctamente!'),
-                          backgroundColor: Colors.green,
-                        ),
+                    onPressed: () async {
+                      if (filtered.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('No hay datos para exportar en este período')),
+                        );
+                        return;
+                      }
+                      await ExcelExportService.instance.exportReportes(
+                        filtered,
+                        dailyRevenue,
+                        bestSellers,
+                        _periodoLabel,
+                        context,
                       );
                     },
                     icon: Icon(Icons.download, size: 14, color: textPrimary),

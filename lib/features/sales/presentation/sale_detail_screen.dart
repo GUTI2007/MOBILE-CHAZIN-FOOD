@@ -139,7 +139,7 @@ class SaleDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Orden de Producción',
+                          'Orden de Producto',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.info),
                         ),
                         Text(

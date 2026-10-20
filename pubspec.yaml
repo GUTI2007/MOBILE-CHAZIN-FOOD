@@ -38,6 +38,12 @@ dependencies:
   # Image Picking
   image_picker: ^1.1.2
 
+  # Excel Export
+  excel: ^4.0.6
+  path_provider: ^2.1.5
+  permission_handler: ^11.3.1
+  share_plus: ^10.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
