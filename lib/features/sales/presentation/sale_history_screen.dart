@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimens.dart';
 import '../../../core/constants/app_strings.dart';
@@ -10,6 +11,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
 import '../providers/sales_provider.dart';
 import 'sale_detail_screen.dart';
+import '../../../widgets/common_app_bar.dart';
 
 class SaleHistoryScreen extends ConsumerStatefulWidget {
   const SaleHistoryScreen({super.key});
@@ -19,66 +21,334 @@ class SaleHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _SaleHistoryScreenState extends ConsumerState<SaleHistoryScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  SaleStatus? _selectedStatus;
+  PaymentMethod? _selectedPayment;
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       ref.read(salesProvider.notifier).loadSales();
     });
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Sale> _filterSales(List<Sale> sales) {
+    return sales.where((sale) {
+      // Status filter
+      if (_selectedStatus != null && sale.status != _selectedStatus) return false;
+      // Payment method filter
+      if (_selectedPayment != null && sale.paymentMethod != _selectedPayment) return false;
+      // Text search — multi-criteria
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery;
+        final matchesClient = sale.clientName.toLowerCase().contains(q);
+        final matchesId = sale.displayId.toLowerCase().contains(q) ||
+            sale.id.toLowerCase().contains(q);
+        final matchesDate = Formatters.date(sale.createdAt).contains(q) ||
+            Formatters.dateTime(sale.createdAt).toLowerCase().contains(q) ||
+            sale.formattedDate.contains(q);
+        final matchesStatus = sale.statusName.toLowerCase().contains(q);
+        final matchesPayment = sale.paymentMethodName.toLowerCase().contains(q);
+        final matchesDelivery = sale.deliveryTypeName.toLowerCase().contains(q);
+        final matchesProduct = sale.details.any(
+            (d) => d.productName.toLowerCase().contains(q));
+        if (!matchesClient &&
+            !matchesId &&
+            !matchesDate &&
+            !matchesStatus &&
+            !matchesPayment &&
+            !matchesDelivery &&
+            !matchesProduct) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(salesProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final filteredSales = _filterSales(state.sales);
+    final hasActiveFilters =
+        _searchQuery.isNotEmpty || _selectedStatus != null || _selectedPayment != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.saleHistory),
+      appBar: CommonAppBar(
+        title: AppStrings.saleHistory,
+        showRefresh: true,
+        onRefresh: () => ref.read(salesProvider.notifier).loadSales(),
       ),
       body: state.isLoading
           ? const LoadingShimmer(itemCount: 8)
-          : state.sales.isEmpty
-              ? const EmptyState(
-                  icon: Icons.receipt_long_outlined,
-                  title: AppStrings.noSales,
-                  subtitle: 'Las ventas registradas aparecerán aquí',
-                )
-              : RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: () => ref.read(salesProvider.notifier).loadSales(),
-                  child: AnimationLimiter(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(AppDimens.paddingScreen),
-                      itemCount: state.sales.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: AppDimens.sm),
-                      itemBuilder: (context, index) {
-                        final sale = state.sales[index];
-                        return AnimationConfiguration.staggeredList(
-                          position: index,
-                          duration: const Duration(milliseconds: 400),
-                          child: SlideAnimation(
-                            horizontalOffset: 40,
-                            child: FadeInAnimation(
-                              child: _SaleCard(
-                                sale: sale,
-                                isDark: isDark,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => SaleDetailScreen(sale: sale),
-                                    ),
-                                  );
-                                },
+          : Column(
+              children: [
+                // ─── Search Bar ───
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: TextField(
+                    controller: _searchController,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por cliente, ID, fecha, producto…',
+                      hintStyle: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: isDark ? Colors.white38 : AppColors.grey400,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: isDark ? Colors.white38 : AppColors.grey400,
+                        size: 20,
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () => _searchController.clear(),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: isDark ? Colors.white38 : AppColors.grey400,
+                                size: 18,
                               ),
-                            ),
-                          ),
-                        );
-                      },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: isDark
+                          ? AppColors.cardDark
+                          : AppColors.grey50,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white10 : AppColors.grey200,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
+
+                // ─── Filter Chips ───
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        // Status chips
+                        _buildFilterChip(
+                          label: 'Todos',
+                          isSelected: _selectedStatus == null,
+                          isDark: isDark,
+                          onTap: () => setState(() => _selectedStatus = null),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildFilterChip(
+                          label: 'Pagado',
+                          icon: Icons.check_circle_outline,
+                          isSelected: _selectedStatus == SaleStatus.completed,
+                          isDark: isDark,
+                          activeColor: AppColors.success,
+                          onTap: () => setState(() => _selectedStatus =
+                              _selectedStatus == SaleStatus.completed
+                                  ? null
+                                  : SaleStatus.completed),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildFilterChip(
+                          label: 'Pendiente',
+                          icon: Icons.access_time,
+                          isSelected: _selectedStatus == SaleStatus.pending,
+                          isDark: isDark,
+                          activeColor: AppColors.warning,
+                          onTap: () => setState(() => _selectedStatus =
+                              _selectedStatus == SaleStatus.pending
+                                  ? null
+                                  : SaleStatus.pending),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildFilterChip(
+                          label: 'Cancelada',
+                          icon: Icons.cancel_outlined,
+                          isSelected: _selectedStatus == SaleStatus.cancelled,
+                          isDark: isDark,
+                          activeColor: AppColors.error,
+                          onTap: () => setState(() => _selectedStatus =
+                              _selectedStatus == SaleStatus.cancelled
+                                  ? null
+                                  : SaleStatus.cancelled),
+                        ),
+                        const SizedBox(width: 12),
+                        // Divider
+                        Container(
+                          width: 1,
+                          height: 24,
+                          color: isDark ? Colors.white12 : AppColors.grey200,
+                        ),
+                        const SizedBox(width: 12),
+                        // Payment method chips
+                        _buildFilterChip(
+                          label: 'Efectivo',
+                          icon: Icons.payments_outlined,
+                          isSelected: _selectedPayment == PaymentMethod.cash,
+                          isDark: isDark,
+                          activeColor: const Color(0xFF10B981),
+                          onTap: () => setState(() => _selectedPayment =
+                              _selectedPayment == PaymentMethod.cash
+                                  ? null
+                                  : PaymentMethod.cash),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildFilterChip(
+                          label: 'Tarjeta',
+                          icon: Icons.credit_card,
+                          isSelected: _selectedPayment == PaymentMethod.card,
+                          isDark: isDark,
+                          activeColor: const Color(0xFF3B82F6),
+                          onTap: () => setState(() => _selectedPayment =
+                              _selectedPayment == PaymentMethod.card
+                                  ? null
+                                  : PaymentMethod.card),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildFilterChip(
+                          label: 'Transfer.',
+                          icon: Icons.swap_horiz,
+                          isSelected:
+                              _selectedPayment == PaymentMethod.transfer,
+                          isDark: isDark,
+                          activeColor: const Color(0xFF8B5CF6),
+                          onTap: () => setState(() => _selectedPayment =
+                              _selectedPayment == PaymentMethod.transfer
+                                  ? null
+                                  : PaymentMethod.transfer),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ─── Results count ───
+                if (hasActiveFilters)
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${filteredSales.length} resultado${filteredSales.length != 1 ? 's' : ''}',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isDark ? Colors.white54 : AppColors.grey500,
+                          ),
+                        ),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            setState(() {
+                              _selectedStatus = null;
+                              _selectedPayment = null;
+                            });
+                          },
+                          child: Text(
+                            'Limpiar filtros',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // ─── List ───
+                Expanded(
+                  child: filteredSales.isEmpty
+                      ? EmptyState(
+                          icon: hasActiveFilters
+                              ? Icons.search_off_rounded
+                              : Icons.receipt_long_outlined,
+                          title: hasActiveFilters
+                              ? 'Sin resultados'
+                              : AppStrings.noSales,
+                          subtitle: hasActiveFilters
+                              ? 'No se encontraron ventas con los filtros aplicados'
+                              : 'Las ventas registradas aparecerán aquí',
+                        )
+                      : RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: () =>
+                              ref.read(salesProvider.notifier).loadSales(),
+                          child: AnimationLimiter(
+                            child: ListView.separated(
+                              padding:
+                                  const EdgeInsets.all(AppDimens.paddingScreen),
+                              itemCount: filteredSales.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: AppDimens.sm),
+                              itemBuilder: (context, index) {
+                                final sale = filteredSales[index];
+                                return AnimationConfiguration.staggeredList(
+                                  position: index,
+                                  duration:
+                                      const Duration(milliseconds: 400),
+                                  child: SlideAnimation(
+                                    horizontalOffset: 40,
+                                    child: FadeInAnimation(
+                                      child: _SaleCard(
+                                        sale: sale,
+                                        isDark: isDark,
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  SaleDetailScreen(sale: sale),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
@@ -90,6 +360,55 @@ class _SaleHistoryScreenState extends ConsumerState<SaleHistoryScreen> {
         },
         icon: const Icon(Icons.add_rounded),
         label: const Text(AppStrings.newSale),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    IconData? icon,
+    required bool isSelected,
+    required bool isDark,
+    Color? activeColor,
+    required VoidCallback onTap,
+  }) {
+    final color = activeColor ?? AppColors.primary;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withAlpha(26)
+              : (isDark ? AppColors.cardDark : AppColors.grey50),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? color
+                : (isDark ? Colors.white10 : AppColors.grey200),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 14, color: isSelected ? color : AppColors.grey400),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected
+                    ? color
+                    : (isDark ? Colors.white54 : AppColors.grey500),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -160,7 +479,7 @@ class _PlaceholderNewSale extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nueva Venta')),
+      appBar: const CommonAppBar(title: 'Nueva Venta'),
       body: Center(
         child: ElevatedButton(
           onPressed: onBack,

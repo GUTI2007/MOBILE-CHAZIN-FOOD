@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'security_sanitizer.dart';
 
 /// Utilidades de formateo
 class Formatters {
@@ -14,8 +15,8 @@ class Formatters {
   static final _dateTimeFormat = DateFormat('dd/MM/yyyy HH:mm', 'es');
   static final _timeFormat = DateFormat('HH:mm', 'es');
 
-  /// Formato moneda COP: $15.000
-  static String currency(double amount) => _currencyCOP.format(amount);
+  /// Formato moneda COP: $15.000 COP
+  static String currency(double amount) => '${_currencyCOP.format(amount)} COP';
 
   /// Formato fecha: 01/07/2026
   static String date(DateTime date) => _dateFormat.format(date);
@@ -27,59 +28,43 @@ class Formatters {
   static String time(DateTime date) => _timeFormat.format(date);
 }
 
-/// Validadores de formularios
+/// Validadores de formularios con protección contra inyección (OWASP Mobile / MASVS)
 class Validators {
   Validators._();
 
-  static final _emailRegex = RegExp(
-    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-  );
-
-  static String? required(String? value) {
+  static String? required(String? value, [String fieldName = 'Este campo']) {
     if (value == null || value.trim().isEmpty) {
-      return 'Este campo es obligatorio';
+      return '$fieldName es obligatorio';
     }
-    return null;
+    return SecurityValidators.validateNoInjection(value, fieldName: fieldName);
   }
 
   static String? email(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Este campo es obligatorio';
-    }
-    if (!_emailRegex.hasMatch(value.trim())) {
-      return 'Ingresa un correo válido';
-    }
-    return null;
+    return SecurityValidators.safeEmail(value);
   }
 
-  static String? password(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Este campo es obligatorio';
-    }
-    if (value.length < 6) {
-      return 'Mínimo 6 caracteres';
-    }
-    return null;
+  static String? password(String? value, {int minLength = 6}) {
+    return SecurityValidators.safePassword(value, minLength: minLength);
   }
 
-  static String? number(String? value) {
+  static String? number(String? value, [String fieldName = 'Este campo']) {
     if (value == null || value.trim().isEmpty) {
-      return 'Este campo es obligatorio';
+      return '$fieldName es obligatorio';
     }
-    if (double.tryParse(value) == null) {
+    final injectionCheck = SecurityValidators.validateNoInjection(value, fieldName: fieldName);
+    if (injectionCheck != null) return injectionCheck;
+
+    if (double.tryParse(value.trim()) == null) {
       return 'Ingresa un número válido';
     }
     return null;
   }
 
   static String? price(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Este campo es obligatorio';
-    }
-    final parsed = double.tryParse(value);
-    if (parsed == null || parsed <= 0) {
-      return 'Ingresa un precio válido';
-    }
-    return null;
+    return SecurityValidators.safePrice(value);
+  }
+
+  static String? safeText(String? value, {bool isRequired = true, String label = 'Este campo', int maxLength = 250}) {
+    return SecurityValidators.safeText(value, isRequired: isRequired, label: label, maxLength: maxLength);
   }
 }

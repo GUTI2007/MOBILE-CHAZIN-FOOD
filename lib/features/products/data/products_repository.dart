@@ -79,18 +79,31 @@ class ProductsRepository {
     required String categoryId,
     required String categoryName,
     String? imageUrl,
+    int estado = 1,
+    List<Map<String, dynamic>> variantes = const [],
+    List<Map<String, dynamic>> adiciones = const [],
+    Map<String, dynamic>? configuracionCombo,
+    List<Map<String, dynamic>> itemsCombo = const [],
+    Map<String, dynamic>? fichaTecnica,
   }) async {
+    final Map<String, dynamic> data = {
+      'nombre': name,
+      'descripcion': description,
+      'precio': price,
+      'idCategoriaProducto': int.tryParse(categoryId) ?? categoryId,
+      'categoria': categoryName,
+      'imagen': imageUrl ?? '',
+      'estado': estado,
+    };
+    if (variantes.isNotEmpty) data['variantes'] = variantes;
+    if (adiciones.isNotEmpty) data['adiciones'] = adiciones;
+    if (configuracionCombo != null) data['configuracionCombo'] = configuracionCombo;
+    if (itemsCombo.isNotEmpty) data['itemsCombo'] = itemsCombo;
+    if (fichaTecnica != null) data['fichaTecnica'] = fichaTecnica;
+
     final response = await _apiClient.post(
       '/productos',
-      data: {
-        'nombre': name,
-        'descripcion': description,
-        'precio': price,
-        'idCategoriaProducto': int.tryParse(categoryId) ?? categoryId,
-        'categoria': categoryName,
-        'imagen': imageUrl ?? '',
-        'estado': 1,
-      },
+      data: data,
     );
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Product.fromJson(Map<String, dynamic>.from(response.data));
@@ -108,6 +121,11 @@ class ProductsRepository {
     String? categoryName,
     String? imageUrl,
     bool? isActive,
+    List<Map<String, dynamic>>? variantes,
+    List<Map<String, dynamic>>? adiciones,
+    Map<String, dynamic>? configuracionCombo,
+    List<Map<String, dynamic>>? itemsCombo,
+    Map<String, dynamic>? fichaTecnica,
   }) async {
     final Map<String, dynamic> updateData = {};
     if (name != null) updateData['nombre'] = name;
@@ -117,6 +135,11 @@ class ProductsRepository {
     if (categoryName != null) updateData['categoria'] = categoryName;
     if (imageUrl != null) updateData['imagen'] = imageUrl;
     if (isActive != null) updateData['estado'] = isActive ? 1 : 0;
+    if (variantes != null) updateData['variantes'] = variantes;
+    if (adiciones != null) updateData['adiciones'] = adiciones;
+    if (configuracionCombo != null) updateData['configuracionCombo'] = configuracionCombo;
+    if (itemsCombo != null) updateData['itemsCombo'] = itemsCombo;
+    if (fichaTecnica != null) updateData['fichaTecnica'] = fichaTecnica;
 
     final response = await _apiClient.put('/productos/$id', data: updateData);
     if (response.statusCode == 200) {

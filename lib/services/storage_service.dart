@@ -1,14 +1,27 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Wrapper para almacenamiento seguro de tokens
+/// Wrapper para almacenamiento seguro de tokens (OWASP MASVS-STORAGE compliant)
 class StorageService {
   static const _tokenKey = 'auth_token';
   static const _refreshTokenKey = 'refresh_token';
   static const _userIdKey = 'user_id';
 
+  static const _androidOptions = AndroidOptions(
+    encryptedSharedPreferences: true,
+  );
+
+  static const _iosOptions = IOSOptions(
+    accessibility: KeychainAccessibility.first_unlock,
+  );
+
   final FlutterSecureStorage _storage;
 
-  StorageService() : _storage = const FlutterSecureStorage();
+  StorageService({FlutterSecureStorage? storage})
+      : _storage = storage ??
+            const FlutterSecureStorage(
+              aOptions: _androidOptions,
+              iOptions: _iosOptions,
+            );
 
   Future<void> saveToken(String token) async {
     await _storage.write(key: _tokenKey, value: token);

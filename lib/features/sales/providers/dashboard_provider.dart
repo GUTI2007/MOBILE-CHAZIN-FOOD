@@ -15,6 +15,7 @@ class DashboardState {
   final List<VentasChartData> ventasChart;
   final List<StockAlertItem> alertasStock;
   final List<PopularProductItem> productosPopulares;
+  final String currentPeriodo;
   final bool isLoading;
   final String? error;
 
@@ -23,6 +24,7 @@ class DashboardState {
     this.ventasChart = const [],
     this.alertasStock = const [],
     this.productosPopulares = const [],
+    this.currentPeriodo = 'Mes Actual',
     this.isLoading = false,
     this.error,
   }) : stats = stats ?? DashboardStats.defaultStats();
@@ -32,6 +34,7 @@ class DashboardState {
     List<VentasChartData>? ventasChart,
     List<StockAlertItem>? alertasStock,
     List<PopularProductItem>? productosPopulares,
+    String? currentPeriodo,
     bool? isLoading,
     String? error,
   }) {
@@ -40,6 +43,7 @@ class DashboardState {
       ventasChart: ventasChart ?? this.ventasChart,
       alertasStock: alertasStock ?? this.alertasStock,
       productosPopulares: productosPopulares ?? this.productosPopulares,
+      currentPeriodo: currentPeriodo ?? this.currentPeriodo,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -54,13 +58,41 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     loadDashboardData();
   }
 
-  Future<void> loadDashboardData() async {
-    state = state.copyWith(isLoading: true, error: null);
+  String _mapPeriodToBackend(String? periodo) {
+    if (periodo == null) return 'mes_actual';
+    final p = periodo.trim().toLowerCase();
+    if (p.contains('actual') && p.contains('mes')) return 'mes_actual';
+    if (p.contains('anterior') && p.contains('mes')) return 'mes_anterior';
+    if (p.contains('3') && p.contains('mes')) return 'ultimos_3_meses';
+    if (p.contains('6') && p.contains('mes')) return 'ultimos_6_meses';
+    if (p.contains('actual') &&
+        (p.contains('a') || p.contains('ano') || p.contains('año'))) {
+      return 'ano_actual';
+    }
+    if (p.contains('anterior') &&
+        (p.contains('a') || p.contains('ano') || p.contains('año'))) {
+      return 'ano_anterior';
+    }
+    if (p.contains('hoy')) return 'hoy';
+    if (p.contains('semana') || p.contains('7')) return '7_dias';
+    return 'mes_actual';
+  }
+
+  Future<void> loadDashboardData({String? periodo}) async {
+    final selectedLabel = periodo ?? state.currentPeriodo;
+    final backendPeriod = _mapPeriodToBackend(selectedLabel);
+    state = state.copyWith(
+      isLoading: true,
+      error: null,
+      currentPeriodo: selectedLabel,
+    );
     try {
-      final stats = await _repository.getStats();
-      final chart = await _repository.getVentasChart();
+      final stats = await _repository.getStats(periodo: backendPeriod);
+      final chart = await _repository.getVentasChart(periodo: backendPeriod);
       final alerts = await _repository.getAlertasStock();
-      final popular = await _repository.getProductosPopulares();
+      final popular = await _repository.getProductosPopulares(
+        periodo: backendPeriod,
+      );
 
       state = state.copyWith(
         stats: stats,
@@ -76,7 +108,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 }
 
 /// Provider global del Dashboard
-final dashboardProvider = StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
-  final repository = ref.watch(dashboardRepositoryProvider);
-  return DashboardNotifier(repository);
-});
+final dashboardProvider =
+    StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
+      final repository = ref.watch(dashboardRepositoryProvider);
+      return DashboardNotifier(repository);
+    });

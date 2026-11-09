@@ -8,6 +8,7 @@ import '../../../shared/models/sale_model.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../products/providers/products_provider.dart';
 import '../providers/sales_provider.dart';
+import '../../../widgets/common_app_bar.dart';
 
 class NewSaleScreen extends ConsumerStatefulWidget {
   const NewSaleScreen({super.key});
@@ -42,15 +43,12 @@ class _NewSaleScreenState extends ConsumerState<NewSaleScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.newSale),
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          onPressed: () {
-            ref.read(newSaleProvider.notifier).reset();
-            Navigator.pop(context);
-          },
-        ),
+      appBar: CommonAppBar(
+        title: AppStrings.newSale,
+        onClose: () {
+          ref.read(newSaleProvider.notifier).reset();
+          Navigator.pop(context);
+        },
       ),
       body: Column(
         children: [
@@ -728,7 +726,7 @@ class _SuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppDimens.sm),
               Text(
-                'La orden de producción ha sido generada automáticamente.',
+                'La orden de productos ha sido generada automáticamente.',
                 style: Theme.of(context).textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),

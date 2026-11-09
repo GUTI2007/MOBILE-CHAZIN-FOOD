@@ -73,6 +73,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(error: null);
   }
 
+  Future<EmailCheckResult> verifyEmail(String email) async {
+    state = state.copyWith(isLoading: true, error: null);
+    final result = await _repository.verifyEmail(email);
+    state = state.copyWith(
+      isLoading: false,
+      error: result.exists ? null : result.message,
+    );
+    return result;
+  }
+
   Future<bool> sendPasswordInstructions(String email) async {
     state = state.copyWith(isLoading: true, error: null);
     final exists = await _repository.recoverPassword(email);

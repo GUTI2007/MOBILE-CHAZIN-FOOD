@@ -230,35 +230,7 @@ class _ChazinDrawerState extends ConsumerState<_ChazinDrawer> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  // Hint informativo
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withAlpha(14),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.primary.withAlpha(40)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.touch_app_rounded, size: 16, color: AppColors.primary.withAlpha(180)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Usa la barra inferior para navegar entre secciones',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
 
                   // PREFERENCIAS header
                   _sectionHeader('PREFERENCIAS'),

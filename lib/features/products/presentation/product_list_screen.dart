@@ -11,8 +11,7 @@ import '../providers/products_provider.dart';
 import '../../events/providers/events_provider.dart';
 import '../../../shared/models/event_model.dart';
 import 'product_form_screen.dart';
-
-import '../../../routes/app_shell.dart';
+import '../../../widgets/common_app_bar.dart';
 
 /// Model for product events (insumo, promo, descuento)
 class ProductEvent {
@@ -83,8 +82,8 @@ class ProductEvent {
         return '$prefix $insumoName $quantity$unit';
       case 'promo_precio':
         final formattedPrice = promoPrice != null
-            ? '\$${promoPrice!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}'
-            : '\$0';
+            ? Formatters.currency(promoPrice!)
+            : Formatters.currency(0);
         return 'Promo: $formattedPrice';
       case 'descuento':
         return 'Descuento: ${discountPercentage?.toStringAsFixed(0) ?? '0'}%';
@@ -104,6 +103,7 @@ class ProductListScreen extends ConsumerStatefulWidget {
 class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   List<ProductEvent> _customEvents = [];
   int _visibleCount = 10;
+  bool _showKpis = true;
   final ScrollController _scrollController = ScrollController();
   final List<OverlayEntry> _toastEntries = [];
 
@@ -161,34 +161,12 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     final filtered = state.filteredProducts;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu_rounded),
-          onPressed: () => AppShell.scaffoldKey.currentState?.openDrawer(),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                'assets/chazin_logo.png',
-                width: 28,
-                height: 28,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text('Chazin Food', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18)),
-          ],
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => ref.read(productsProvider.notifier).loadProducts(),
-          ),
-        ],
+      appBar: CommonAppBar(
+        showBrandHeader: true,
+        showDrawerMenu: true,
+        showDarkModeToggle: true,
+        showRefresh: true,
+        onRefresh: () => ref.read(productsProvider.notifier).loadProducts(),
       ),
       body: state.isLoading
           ? const LoadingShimmer(itemCount: 4, isList: true)
@@ -204,23 +182,53 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     // ─── Title Section ───
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: Column(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Gestión de Productos',
-                            style: GoogleFonts.outfit(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Gestión de Productos',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Administra el menú y productos del negocio',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Administra el menú y productos del negocio',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
+                          const SizedBox(width: 8),
+                          // Botón toggle KPIs
+                          GestureDetector(
+                            onTap: () => setState(() => _showKpis = !_showKpis),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _showKpis
+                                    ? AppColors.primary.withAlpha(20)
+                                    : (isDark ? Colors.white10 : AppColors.grey100),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _showKpis ? AppColors.primary : (isDark ? Colors.white24 : AppColors.grey300),
+                                ),
+                              ),
+                              child: Icon(
+                                _showKpis ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                size: 16,
+                                color: _showKpis ? AppColors.primary : (isDark ? Colors.white54 : AppColors.grey500),
+                              ),
                             ),
                           ),
                         ],
@@ -228,9 +236,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // ─── Stats Grid 2×2 ───
-                    _buildStatsGrid(state, isDark),
-                    const SizedBox(height: 16),
+                    // ─── Stats Grid 2×2 (condicional al toggle) ───
+                    if (_showKpis) ...[
+                      _buildStatsGrid(state, isDark),
+                      const SizedBox(height: 16),
+                    ],
 
                     // ─── Search Bar ───
                     Padding(
@@ -345,7 +355,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF7C3AED),
+                                    color: const Color(0xFFE65100),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(
@@ -1110,7 +1120,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         // ─── Section 4: Eventos y Promociones Activas ───
                         Row(
                           children: [
-                            const Icon(Icons.bolt_outlined, size: 16, color: Color(0xFF7C3AED)),
+                            const Icon(Icons.bolt_outlined, size: 16, color: Color(0xFFE65100)),
                             const SizedBox(width: 6),
                             Text(
                               'EVENTOS Y PROMOCIONES ACTIVAS',
@@ -1127,16 +1137,16 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF5F3FF),
+                            color: const Color(0xFFFFF8E1),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFDDD6FE)),
+                            border: Border.all(color: const Color(0xFFFFE082)),
                           ),
                           child: Row(
                             children: [
                               Container(
                                 padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(8)),
-                                child: const Icon(Icons.local_offer_outlined, size: 18, color: Color(0xFF7C3AED)),
+                                decoration: BoxDecoration(color: const Color(0xFFFFECB3), borderRadius: BorderRadius.circular(8)),
+                                child: const Icon(Icons.local_offer_outlined, size: 18, color: Color(0xFFE65100)),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -1147,20 +1157,20 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                       children: [
                                         Text(
                                           '20% OFF en Doble Carne',
-                                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF5B21B6)),
+                                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFFBF360C)),
                                         ),
                                         const SizedBox(width: 6),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: const Color(0xFFDDD6FE), borderRadius: BorderRadius.circular(6)),
-                                          child: Text('Descuento', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF6D28D9))),
+                                          decoration: BoxDecoration(color: const Color(0xFFFFE082), borderRadius: BorderRadius.circular(6)),
+                                          child: Text('Descuento', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFFE65100))),
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       'Doble porción de carne jugosa 80/20 con 20% OFF.',
-                                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF6D28D9)),
+                                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFFBF360C)),
                                     ),
                                   ],
                                 ),
@@ -1425,12 +1435,12 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF3E8FF),
+                              color: const Color(0xFFFFF3E0),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
                               Icons.auto_awesome,
-                              color: Color(0xFF7C3AED),
+                              color: Color(0xFFE65100),
                               size: 20,
                             ),
                           ),
@@ -1582,7 +1592,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFF3E8FF) : Colors.transparent,
+            color: isSelected ? const Color(0xFFFFF3E0) : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -1595,7 +1605,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: isSelected
-                        ? const Color(0xFF7C3AED)
+                        ? const Color(0xFFE65100)
                         : (isDark ? Colors.white54 : AppColors.grey500),
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -1606,7 +1616,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF7C3AED) : (isDark ? Colors.white12 : AppColors.grey300),
+                    color: isSelected ? const Color(0xFFE65100) : (isDark ? Colors.white12 : AppColors.grey300),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -1770,20 +1780,20 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
+                  color: const Color(0xFFFFF3E0),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.access_time_filled_rounded, color: Color(0xFF7C3AED), size: 11),
+                    const Icon(Icons.access_time_filled_rounded, color: Color(0xFFE65100), size: 11),
                     const SizedBox(width: 4),
                     Text(
                       evt.typeLabel,
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF7C3AED),
+                        color: const Color(0xFFE65100),
                       ),
                     ),
                   ],
@@ -1915,7 +1925,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     children: [
                     // Header section
                     Container(
-                      color: const Color(0xFF7C3AED), // bright purple background
+                      color: const Color(0xFFE65100), // bright purple background
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       child: Row(
                         children: [
@@ -1997,8 +2007,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                     id: 'insumo_temp',
                                     label: 'Insumo Temporal',
                                     icon: Icons.access_time_rounded,
-                                    iconColor: const Color(0xFF7C3AED),
-                                    iconBg: const Color(0xFFF3E8FF),
+                                    iconColor: const Color(0xFFE65100),
+                                    iconBg: const Color(0xFFFFF3E0),
                                     isSelected: selectedEventType == 'insumo_temp',
                                     isDark: isDark,
                                     onTap: () => setDialogState(() {
@@ -2101,7 +2111,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Color(0xFF7C3AED)),
+                                  borderSide: const BorderSide(color: Color(0xFFE65100)),
                                 ),
                               ),
                             ),
@@ -2137,7 +2147,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Color(0xFF7C3AED)),
+                                  borderSide: const BorderSide(color: Color(0xFFE65100)),
                                 ),
                               ),
                             ),
@@ -2231,7 +2241,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         ),
                                         focusedBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: const BorderSide(color: Color(0xFF7C3AED)),
+                                          borderSide: const BorderSide(color: Color(0xFFE65100)),
                                         ),
                                       ),
                                     ),
@@ -2265,7 +2275,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         ),
                                         focusedBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: const BorderSide(color: Color(0xFF7C3AED)),
+                                          borderSide: const BorderSide(color: Color(0xFFE65100)),
                                         ),
                                       ),
                                     ),
@@ -2299,7 +2309,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         ),
                                         focusedBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: const BorderSide(color: Color(0xFF7C3AED)),
+                                          borderSide: const BorderSide(color: Color(0xFFE65100)),
                                         ),
                                       ),
                                       items: ['und', 'gr', 'kg', 'ml', 'lt', 'oz']
@@ -2348,7 +2358,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                           ),
                                         ),
                                         Text(
-                                          '\$${product.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
+                                          Formatters.currency(product.price),
                                           style: GoogleFonts.inter(
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
@@ -2392,7 +2402,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         ),
                                         focusedBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: const BorderSide(color: Color(0xFF7C3AED)),
+                                          borderSide: const BorderSide(color: Color(0xFFE65100)),
                                         ),
                                       ),
                                     ),
@@ -2512,8 +2522,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                   Switch(
                                     value: isTemporal,
                                     onChanged: (val) => setDialogState(() => isTemporal = val),
-                                    activeThumbColor: const Color(0xFF7C3AED),
-                                    activeTrackColor: const Color(0xFF7C3AED).withAlpha(128),
+                                    activeThumbColor: const Color(0xFFE65100),
+                                    activeTrackColor: const Color(0xFFE65100).withAlpha(128),
                                   ),
                                 ],
                               ),
@@ -2775,7 +2785,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFC084FC), // light purple background
+                              backgroundColor: const Color(0xFFE65100), // naranja corporativo
                               minimumSize: const Size(0, 40),
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               elevation: 0,
@@ -2845,7 +2855,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               : (isDark ? AppColors.cardDark : Colors.white),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF7C3AED)
+                ? const Color(0xFFE65100)
                 : (isDark ? Colors.white10 : AppColors.grey200),
             width: 1.5,
           ),
@@ -2870,7 +2880,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected
-                      ? const Color(0xFF7C3AED)
+                      ? const Color(0xFFE65100)
                       : (isDark ? Colors.white70 : AppColors.grey700),
                   height: 1.2,
                 ),
@@ -2896,7 +2906,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected ? const Color(0xFF7C3AED) : AppColors.grey400,
+                color: isSelected ? const Color(0xFFE65100) : AppColors.grey400,
                 width: 2,
               ),
             ),
@@ -2906,7 +2916,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       width: 10,
                       height: 10,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF7C3AED),
+                        color: Color(0xFFE65100),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -3239,18 +3249,19 @@ class _FigmaProductCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7C3AED),
+                      color: const Color(0xFFFFF8E1),
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFFFE082), width: 1),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.flash_on, color: Colors.white, size: 12),
+                        const Icon(Icons.flash_on, color: Color(0xFFE65100), size: 12),
                         const SizedBox(width: 3),
                         Text(
                           '$eventCount evento${eventCount > 1 ? 's' : ''}',
                           style: GoogleFonts.inter(
-                            color: Colors.white,
+                            color: const Color(0xFFE65100),
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -3375,9 +3386,9 @@ class _FigmaProductCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF2E1A47) : const Color(0xFFF9F5FF),
+                  color: isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF8E1),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF4C2A75) : const Color(0xFFE9D7FE),
+                    color: isDark ? const Color(0xFF5D4037) : const Color(0xFFFFE0B2),
                     width: 1,
                   ),
                   borderRadius: BorderRadius.circular(24),
@@ -3388,7 +3399,7 @@ class _FigmaProductCard extends StatelessWidget {
                     Icon(
                       Icons.bolt_rounded,
                       size: 16,
-                      color: isDark ? const Color(0xFFD6BBFB) : const Color(0xFF7F56D9),
+                      color: isDark ? const Color(0xFFFFCC80) : const Color(0xFFEF6C00),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -3396,7 +3407,7 @@ class _FigmaProductCard extends StatelessWidget {
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFFD6BBFB) : const Color(0xFF7F56D9),
+                        color: isDark ? const Color(0xFFFFCC80) : const Color(0xFFEF6C00),
                       ),
                     ),
                   ],

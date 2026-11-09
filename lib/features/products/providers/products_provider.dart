@@ -107,6 +107,12 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
     required String categoryId,
     required String categoryName,
     String? imageUrl,
+    int estado = 1,
+    List<Map<String, dynamic>> variantes = const [],
+    List<Map<String, dynamic>> adiciones = const [],
+    Map<String, dynamic>? configuracionCombo,
+    List<Map<String, dynamic>> itemsCombo = const [],
+    Map<String, dynamic>? fichaTecnica,
   }) async {
     await _repository.createProduct(
       name: name,
@@ -115,6 +121,12 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
       categoryId: categoryId,
       categoryName: categoryName,
       imageUrl: imageUrl,
+      estado: estado,
+      variantes: variantes,
+      adiciones: adiciones,
+      configuracionCombo: configuracionCombo,
+      itemsCombo: itemsCombo,
+      fichaTecnica: fichaTecnica,
     );
     await loadProducts();
   }
@@ -127,6 +139,11 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
     String? categoryName,
     String? imageUrl,
     bool? isActive,
+    List<Map<String, dynamic>>? variantes,
+    List<Map<String, dynamic>>? adiciones,
+    Map<String, dynamic>? configuracionCombo,
+    List<Map<String, dynamic>>? itemsCombo,
+    Map<String, dynamic>? fichaTecnica,
   }) async {
     await _repository.updateProduct(id,
       name: name,
@@ -136,6 +153,11 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
       categoryName: categoryName,
       imageUrl: imageUrl,
       isActive: isActive,
+      variantes: variantes,
+      adiciones: adiciones,
+      configuracionCombo: configuracionCombo,
+      itemsCombo: itemsCombo,
+      fichaTecnica: fichaTecnica,
     );
     await loadProducts();
   }

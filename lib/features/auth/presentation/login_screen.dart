@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../providers/auth_provider.dart';
 import 'widgets/cross_label_input_field.dart';
@@ -19,7 +20,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _showPassword = false;
   late AnimationController _chefAnimationController;
   late Animation<double> _chefBounceAnimation;
@@ -52,11 +53,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     if (!_formKey.currentState!.validate()) return;
 
     ref.read(authProvider.notifier).clearError();
-    
-    final success = await ref.read(authProvider.notifier).login(
-      _emailController.text,
-      _passwordController.text,
-    );
+
+    final success = await ref
+        .read(authProvider.notifier)
+        .login(_emailController.text.trim(), _passwordController.text);
 
     if (success && mounted) {
       CustomToast.show(
@@ -86,11 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       body: Stack(
         children: [
           // ─── 1. Fondo de color rosa muy claro y difuminado, casi blanco ───
-          Positioned.fill(
-            child: Container(
-              color: const Color(0xFFFFF9FA),
-            ),
-          ),
+          Positioned.fill(child: Container(color: const Color(0xFFFFF9FA))),
           // ─── 2. Círculos de gradiente difuminados (Blur) ───
           Positioned(
             top: -100,
@@ -102,8 +98,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    brandColor.withOpacity(0.15),
-                    brandColor.withOpacity(0.0),
+                    brandColor.withValues(alpha: 0.15),
+                    brandColor.withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -119,8 +115,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF30475E).withOpacity(0.15),
-                    const Color(0xFF30475E).withOpacity(0.0),
+                    const Color(0xFF30475E).withValues(alpha: 0.15),
+                    const Color(0xFF30475E).withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -138,14 +134,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           // ─── 5. Contenido Principal ───
           SafeArea(
             child: Align(
-              alignment: isKeyboardOpen ? Alignment.topCenter : Alignment.center,
+              alignment: isKeyboardOpen
+                  ? Alignment.topCenter
+                  : Alignment.center,
               child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                behavior: ScrollConfiguration.of(
+                  context,
+                ).copyWith(scrollbars: false),
                 child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   child: Column(
-                    mainAxisAlignment: isKeyboardOpen ? MainAxisAlignment.start : MainAxisAlignment.center,
+                    mainAxisAlignment: isKeyboardOpen
+                        ? MainAxisAlignment.start
+                        : MainAxisAlignment.center,
                     children: [
                       if (!isKeyboardOpen) ...[
                         const SizedBox(height: 15),
@@ -172,8 +179,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
                                   colors: [
-                                    brandColor.withOpacity(0.24),
-                                    brandColor.withOpacity(0.0),
+                                    brandColor.withValues(alpha: 0.24),
+                                    brandColor.withValues(alpha: 0.0),
                                   ],
                                   stops: const [0.45, 1.0],
                                 ),
@@ -191,12 +198,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     color: Colors.white,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: brandColor.withOpacity(0.12),
+                                      color: brandColor.withValues(alpha: 0.12),
                                       width: 1.5,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.06),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.06,
+                                        ),
                                         blurRadius: 16,
                                         offset: const Offset(0, 8),
                                       ),
@@ -209,13 +218,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         width: 92,
                                         height: 92,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return const Icon(
-                                            Icons.restaurant_rounded,
-                                            size: 48,
-                                            color: brandColor,
-                                          );
-                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return const Icon(
+                                                Icons.restaurant_rounded,
+                                                size: 48,
+                                                color: brandColor,
+                                              );
+                                            },
                                       ),
                                     ),
                                   ),
@@ -227,7 +237,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     animation: _chefBounceAnimation,
                                     builder: (context, child) {
                                       return Transform.translate(
-                                        offset: Offset(0, _chefBounceAnimation.value),
+                                        offset: Offset(
+                                          0,
+                                          _chefBounceAnimation.value,
+                                        ),
                                         child: child,
                                       );
                                     },
@@ -307,7 +320,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -328,8 +341,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 color: brandColor,
                               ),
                             ),
-                            
-                            // Cabecera que simula el tab activo de Iniciar Sesión (Sin pestaña "Registrarse")
+
+                            // Cabecera que simula el tab activo de Iniciar Sesión
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -342,31 +355,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   ),
                                 ),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.login_rounded,
+                              child: Center(
+                                child: Text(
+                                  'Iniciar Sesión',
+                                  style: GoogleFonts.poppins(
                                     color: brandColor,
-                                    size: 18,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Iniciar Sesión',
-                                    style: GoogleFonts.poppins(
-                                      color: brandColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
 
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24.0,
+                                vertical: 28.0,
+                              ),
                               child: Form(
                                 key: _formKey,
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -377,16 +386,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       hintText: 'usuario@chazinfood.com',
                                       controller: _emailController,
                                       keyboardType: TextInputType.emailAddress,
-                                      validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
-                                          return 'Campo requerido';
-                                        }
-                                        final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-                                        if (!emailRegex.hasMatch(value.trim())) {
-                                          return 'Ingresa un correo válido';
-                                        }
-                                        return null;
-                                      },
+                                      validator: Validators.email,
                                     ),
                                     const SizedBox(height: 20),
 
@@ -397,18 +397,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       hintText: '........',
                                       controller: _passwordController,
                                       obscureText: !_showPassword,
-                                      keyboardType: TextInputType.visiblePassword,
+                                      keyboardType:
+                                          TextInputType.visiblePassword,
                                       suffixIcon: IconButton(
                                         icon: Stack(
                                           alignment: Alignment.center,
                                           children: [
                                             Icon(
-                                              _showPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                              _showPassword
+                                                  ? Icons.visibility_outlined
+                                                  : Icons
+                                                        .visibility_off_outlined,
                                               color: Colors.white,
                                               size: 24,
                                             ),
                                             Icon(
-                                              _showPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                              _showPassword
+                                                  ? Icons.visibility_outlined
+                                                  : Icons
+                                                        .visibility_off_outlined,
                                               color: Colors.grey.shade600,
                                               size: 18,
                                             ),
@@ -420,12 +427,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                           });
                                         },
                                       ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Campo requerido';
-                                        }
-                                        return null;
-                                      },
+                                      validator: Validators.password,
                                     ),
                                     const SizedBox(height: 28),
 
@@ -435,62 +437,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       height: 54,
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
                                           color: brandColor,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: brandColor.withOpacity(0.35),
+                                              color: brandColor.withValues(
+                                                alpha: 0.35,
+                                              ),
                                               blurRadius: 10,
                                               offset: const Offset(0, 5),
                                             ),
                                           ],
                                         ),
                                         child: ElevatedButton(
-                                          onPressed: isLoading ? null : _handleLogin,
+                                          onPressed: isLoading
+                                              ? null
+                                              : _handleLogin,
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.transparent,
                                             shadowColor: Colors.transparent,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(16),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
                                             ),
                                           ),
                                           child: FittedBox(
                                             fit: BoxFit.scaleDown,
                                             child: isLoading
                                                 ? Row(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
                                                     children: [
                                                       const SizedBox(
                                                         width: 20,
                                                         height: 20,
-                                                        child: CircularProgressIndicator(
-                                                          color: Colors.white,
-                                                          strokeWidth: 2.5,
-                                                        ),
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              color:
+                                                                  Colors.white,
+                                                              strokeWidth: 2.5,
+                                                            ),
                                                       ),
                                                       const SizedBox(width: 12),
                                                       Text(
                                                         'Ingresando...',
-                                                        style: GoogleFonts.poppins(
-                                                          fontSize: 16,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Colors.white,
-                                                        ),
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                              fontSize: 16,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
                                                       ),
                                                     ],
                                                   )
                                                 : Row(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
                                                     children: [
-                                                      const Icon(Icons.login_rounded, size: 20, color: Colors.white),
+                                                      const Icon(
+                                                        Icons.login_rounded,
+                                                        size: 20,
+                                                        color: Colors.white,
+                                                      ),
                                                       const SizedBox(width: 8),
                                                       Text(
                                                         'Iniciar Sesión',
-                                                        style: GoogleFonts.poppins(
-                                                          fontSize: 16,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Colors.white,
-                                                        ),
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                              fontSize: 16,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
                                                       ),
                                                     ],
                                                   ),
@@ -507,7 +534,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                           if (!isLoading) {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (_) => const ForgotPasswordScreen(),
+                                                builder: (_) =>
+                                                    const ForgotPasswordScreen(),
                                               ),
                                             );
                                           }
@@ -556,9 +584,9 @@ class _DotGridBehindLogoPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     const double spacing = 30.0; // Espaciado ampliado para que sobresalga
-    const double radius = 3.5;   // Tamaño exacto
+    const double radius = 3.5; // Tamaño exacto
     const int rows = 8;
-    const int cols = 10;         // Más columnas para que sea más ancho
+    const int cols = 10; // Más columnas para que sea más ancho
 
     // Centrar la cuadrícula dentro de la caja de tamaño asignado
     double startX = (size.width - (cols - 1) * spacing) / 2;
@@ -588,14 +616,14 @@ class SparklePainter extends CustomPainter {
     final path = Path();
     double cx = center.dx;
     double cy = center.dy;
-    
-    path.moveTo(cx, cy - radius); 
-    path.quadraticBezierTo(cx, cy, cx + radius, cy); 
-    path.quadraticBezierTo(cx, cy, cx, cy + radius); 
-    path.quadraticBezierTo(cx, cy, cx - radius, cy); 
-    path.quadraticBezierTo(cx, cy, cx, cy - radius); 
+
+    path.moveTo(cx, cy - radius);
+    path.quadraticBezierTo(cx, cy, cx + radius, cy);
+    path.quadraticBezierTo(cx, cy, cx, cy + radius);
+    path.quadraticBezierTo(cx, cy, cx - radius, cy);
+    path.quadraticBezierTo(cx, cy, cx, cy - radius);
     path.close();
-    
+
     canvas.drawPath(path, paint);
   }
 
@@ -606,11 +634,26 @@ class SparklePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     // Estrella principal grande en el centro-izquierda (✨)
-    _drawSparkle(canvas, Offset(size.width * 0.45, size.height * 0.55), size.width * 0.32, paint);
+    _drawSparkle(
+      canvas,
+      Offset(size.width * 0.45, size.height * 0.55),
+      size.width * 0.32,
+      paint,
+    );
     // Estrella mediana en la parte superior derecha
-    _drawSparkle(canvas, Offset(size.width * 0.8, size.height * 0.25), size.width * 0.18, paint);
+    _drawSparkle(
+      canvas,
+      Offset(size.width * 0.8, size.height * 0.25),
+      size.width * 0.18,
+      paint,
+    );
     // Estrella pequeña abajo
-    _drawSparkle(canvas, Offset(size.width * 0.18, size.height * 0.32), size.width * 0.12, paint);
+    _drawSparkle(
+      canvas,
+      Offset(size.width * 0.18, size.height * 0.32),
+      size.width * 0.12,
+      paint,
+    );
   }
 
   @override
@@ -633,32 +676,43 @@ class ChefHatPainter extends CustomPainter {
     double h = size.height;
 
     // 1. Banda inferior (rectángulo outline)
-    path.addRRect(RRect.fromRectAndRadius(
-      Rect.fromLTRB(w * 0.28, h * 0.65, w * 0.72, h * 0.77),
-      const Radius.circular(2),
-    ));
+    path.addRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(w * 0.28, h * 0.65, w * 0.72, h * 0.77),
+        const Radius.circular(2),
+      ),
+    );
 
     // 2. Nube superior (los tres domos outline sin cruces internos)
     final domesPath = Path();
     domesPath.moveTo(w * 0.28, h * 0.65);
-    
+
     // Domo izquierdo
     domesPath.cubicTo(
-      w * 0.12, h * 0.52,
-      w * 0.24, h * 0.35,
-      w * 0.40, h * 0.45,
+      w * 0.12,
+      h * 0.52,
+      w * 0.24,
+      h * 0.35,
+      w * 0.40,
+      h * 0.45,
     );
     // Domo central
     domesPath.cubicTo(
-      w * 0.42, h * 0.22,
-      w * 0.58, h * 0.22,
-      w * 0.60, h * 0.45,
+      w * 0.42,
+      h * 0.22,
+      w * 0.58,
+      h * 0.22,
+      w * 0.60,
+      h * 0.45,
     );
     // Domo derecho
     domesPath.cubicTo(
-      w * 0.76, h * 0.35,
-      w * 0.88, h * 0.52,
-      w * 0.72, h * 0.65,
+      w * 0.76,
+      h * 0.35,
+      w * 0.88,
+      h * 0.52,
+      w * 0.72,
+      h * 0.65,
     );
 
     canvas.drawPath(path, paint);

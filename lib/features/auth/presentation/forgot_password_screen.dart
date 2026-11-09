@@ -1,13 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../providers/auth_provider.dart';
 import 'widgets/cross_label_input_field.dart';
 import 'widgets/wave_widget.dart';
-import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -47,8 +46,33 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
 
-    final email = _emailController.text;
+    final email = _emailController.text.trim();
+
+    // 1. Validar contra el backend o base de datos si el correo realmente existe
+    final checkResult = await ref.read(authProvider.notifier).verifyEmail(email);
+
+    if (!mounted) return;
+
+    if (!checkResult.exists) {
+      // Si el correo no está registrado, el sistema se detiene y muestra alerta/mensaje descriptivo
+      final msg = checkResult.message.isNotEmpty
+          ? checkResult.message
+          : 'El correo ingresado no se encuentra registrado en el sistema.';
+
+      CustomToast.show(
+        context,
+        title: checkResult.isConnectionError ? 'Error de conexión' : 'Correo no registrado',
+        message: msg,
+        isError: true,
+      );
+
+      _showNotRegisteredDialog(msg);
+      return;
+    }
+
+    // 2. Si existe, procede a enviar el correo de recuperación normalmente
     final success = await ref.read(authProvider.notifier).sendPasswordInstructions(email);
 
     if (success && mounted) {
@@ -58,28 +82,80 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
       CustomToast.show(
         context,
         title: '¡Correo enviado!',
-        message: 'Revisa tu bandeja de entrada para restablecer tu contraseña',
+        message: 'Revisa tu bandeja de entrada y haz clic en el enlace de recuperación',
       );
-
-      // Redirigir después de 3 segundos
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          final mockToken = base64Encode(utf8.encode('$email${DateTime.now().millisecondsSinceEpoch}'));
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => ResetPasswordScreen(email: email, token: mockToken),
-            ),
-          );
-        }
-      });
+      // ⚠️ No se redirige automáticamente. El usuario debe revisar su correo
+      // y hacer clic en el enlace recibido para restablecer la contraseña.
     } else if (mounted) {
       CustomToast.show(
         context,
-        title: 'Error',
-        message: 'Por favor ingresa un correo electrónico válido',
+        title: 'Error al enviar',
+        message: 'No fue posible enviar las instrucciones. Intenta de nuevo en unos momentos.',
         isError: true,
       );
     }
+  }
+
+  void _showNotRegisteredDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFECEE),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: Color(0xFFFF3E55),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Correo no registrado',
+                style: GoogleFonts.poppins(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF30475E),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey.shade700,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              backgroundColor: const Color(0xFFFF3E55),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              'Entendido',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -108,8 +184,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    brandColor.withOpacity(0.15),
-                    brandColor.withOpacity(0.0),
+                    brandColor.withValues(alpha: 0.15),
+                    brandColor.withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -125,8 +201,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF30475E).withOpacity(0.15),
-                    const Color(0xFF30475E).withOpacity(0.0),
+                    const Color(0xFF30475E).withValues(alpha: 0.15),
+                    const Color(0xFF30475E).withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -190,7 +266,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                       Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(
                             color: Colors.grey.shade200,
@@ -198,7 +274,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
+                              color: Colors.black.withValues(alpha: 0.06),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -262,16 +338,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                                         hintText: 'tu@correo.com',
                                         controller: _emailController,
                                         keyboardType: TextInputType.emailAddress,
-                                        validator: (value) {
-                                          if (value == null || value.trim().isEmpty) {
-                                            return 'Campo requerido';
-                                          }
-                                          final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-                                          if (!emailRegex.hasMatch(value.trim())) {
-                                            return 'Ingresa un correo válido';
-                                          }
-                                          return null;
-                                        },
+                                        validator: Validators.email,
                                       ),
                                       const SizedBox(height: 24),
 
@@ -289,7 +356,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: brandColor.withOpacity(0.3),
+                                                color: brandColor.withValues(alpha: 0.3),
                                                 blurRadius: 12,
                                                 offset: const Offset(0, 6),
                                               ),
@@ -414,12 +481,59 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
                                     ),
                                     const SizedBox(height: 24),
                                     Text(
-                                      'Redirigiendo a la página de restablecimiento...',
+                                      'Por favor revisa tu bandeja de entrada y haz clic en el enlace de recuperación que te enviamos.',
                                       textAlign: TextAlign.center,
                                       style: GoogleFonts.poppins(
                                         fontSize: 13,
-                                        color: Colors.grey.shade500,
-                                        fontStyle: FontStyle.italic,
+                                        color: Colors.grey.shade600,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF3E0),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFFFE0B2)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.info_outline_rounded, color: Color(0xFFE65100), size: 18),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'El enlace expirará en 30 minutos. No cierres esta app antes de hacer clic en él.',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 12,
+                                                color: const Color(0xFFE65100),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    // Botón Volver al login
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton(
+                                        onPressed: () => Navigator.of(context).pop(),
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(color: brandColor),
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Volver al inicio de sesión',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: brandColor,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],

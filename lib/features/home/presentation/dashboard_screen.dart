@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../providers/dark_mode_provider.dart';
+import '../../../core/utils/helpers.dart';
 import '../../../providers/navigation_provider.dart';
 import '../../sales/providers/dashboard_provider.dart';
+import '../../sales/providers/orders_provider.dart';
 import '../../../shared/models/dashboard_stats_model.dart';
-
-import '../../../routes/app_shell.dart';
+import '../../../widgets/common_app_bar.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -23,6 +23,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int? _activeTooltipCount;
   int? _selectedMonthIndex;
 
+  // Período seleccionado para filtro histórico
+  String _periodoSeleccionado = 'Mes Actual';
+  bool _showKpiDash = true;
+
+  static const List<String> _periodos = [
+    'Mes Actual',
+    'Mes Anterior',
+    'Últimos 3 Meses',
+    'Últimos 6 Meses',
+    'Año Actual',
+    'Año Anterior',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -30,42 +43,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final stats = dashboardState.stats;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu_rounded),
-          onPressed: () => AppShell.scaffoldKey.currentState?.openDrawer(),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                'assets/chazin_logo.png',
-                width: 28,
-                height: 28,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text('Chazin Food', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18)),
-          ],
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-            onPressed: () {
-              ref.read(darkModeProvider.notifier).state = !isDark;
-            },
-          ),
-        ],
+      appBar: const CommonAppBar(
+        showBrandHeader: true,
+        showDrawerMenu: true,
+        showDarkModeToggle: true,
       ),
       body: SafeArea(
         child: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () async {
-            await ref.read(dashboardProvider.notifier).loadDashboardData();
+            await ref.read(dashboardProvider.notifier).loadDashboardData(periodo: _periodoSeleccionado);
+            await ref.read(ordersProvider.notifier).loadOrders();
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -81,86 +69,156 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   children: [
                     // ─── Header title ───
-                    Text(
-                      'Panel de Control',
-                      style: GoogleFonts.outfit(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Panel de Control',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                ),
+                              ),
+                              Text(
+                                _periodoSeleccionado,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Botón toggle KPIs
+                        GestureDetector(
+                          onTap: () => setState(() => _showKpiDash = !_showKpiDash),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _showKpiDash
+                                  ? AppColors.primary.withAlpha(20)
+                                  : (isDark ? Colors.white10 : AppColors.grey100),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _showKpiDash ? AppColors.primary : (isDark ? Colors.white24 : AppColors.grey300),
+                              ),
+                            ),
+                            child: Icon(
+                              _showKpiDash ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              size: 16,
+                              color: _showKpiDash ? AppColors.primary : (isDark ? Colors.white54 : AppColors.grey500),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Botón dedicado de filtro período
+                        GestureDetector(
+                          onTap: () => _showPeriodPicker(context, isDark),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white10 : AppColors.grey50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isDark ? Colors.white24 : AppColors.grey300,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.calendar_month_outlined,
+                                  size: 15,
+                                  color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 14,
+                                  color: isDark ? Colors.white54 : AppColors.grey500,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      'Bienvenido a Chazin Food',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // ─── Metric Cards (2×2 Grid) ───
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildMetricCard(
-                            icon: Icons.attach_money_rounded,
-                            iconColor: const Color(0xFF10B981),
-                            iconBg: const Color(0xFFD1FAE5),
-                            label: 'Ventas del Mes',
-                            value: stats.ventasTotal >= 1000000
-                                ? '\$${(stats.ventasTotal / 1000000).toStringAsFixed(1)}M'
-                                : '\$${stats.ventasTotal.toStringAsFixed(0)}',
-                            trendText: '${stats.ventasVariacion >= 0 ? '↗ +' : '↘ '}${stats.ventasVariacion.toStringAsFixed(1)}%',
-                            trendColor: const Color(0xFF10B981),
-                            isDark: isDark,
+                    // ─── Metric Cards (2x2 Grid) — condicional al toggle ───
+                    if (_showKpiDash) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildMetricCard(
+                              icon: Icons.attach_money_rounded,
+                              iconColor: const Color(0xFF10B981),
+                              iconBg: const Color(0xFFD1FAE5),
+                              label: _periodoSeleccionado == 'Mes Actual'
+                                  ? 'Ventas del Mes'
+                                  : 'Ventas del Período',
+                              value: Formatters.currency(stats.ventasTotal),
+                              trendText: '${stats.ventasVariacion >= 0 ? '↗ +' : '↘ '}${stats.ventasVariacion.toStringAsFixed(1)}%',
+                              trendColor: const Color(0xFF10B981),
+                              isDark: isDark,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildMetricCard(
-                            icon: Icons.shopping_cart_outlined,
-                            iconColor: const Color(0xFF3B82F6),
-                            iconBg: const Color(0xFFDBEAFE),
-                            label: 'Total Pedidos',
-                            value: '${stats.pedidosTotal}',
-                            trendText: '${stats.pedidosVariacion >= 0 ? '↗ +' : '↘ '}${stats.pedidosVariacion.toStringAsFixed(1)}%',
-                            trendColor: const Color(0xFF3B82F6),
-                            isDark: isDark,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildMetricCard(
+                              icon: Icons.shopping_cart_outlined,
+                              iconColor: const Color(0xFF3B82F6),
+                              iconBg: const Color(0xFFDBEAFE),
+                              label: 'Total Pedidos',
+                              value: '${stats.pedidosTotal}',
+                              trendText: '${stats.pedidosVariacion >= 0 ? '↗ +' : '↘ '}${stats.pedidosVariacion.toStringAsFixed(1)}%',
+                              trendColor: const Color(0xFF3B82F6),
+                              isDark: isDark,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildMetricCard(
-                            icon: Icons.people_outline_rounded,
-                            iconColor: const Color(0xFF8B5CF6),
-                            iconBg: const Color(0xFFEDE9FE),
-                            label: 'Clientes Activos',
-                            value: '${stats.clientesActivos}',
-                            trendText: '${stats.clientesVariacion >= 0 ? '↗ +' : '↘ '}${stats.clientesVariacion.toStringAsFixed(1)}%',
-                            trendColor: const Color(0xFF10B981),
-                            isDark: isDark,
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildMetricCard(
+                              icon: Icons.people_outline_rounded,
+                              iconColor: const Color(0xFF8B5CF6),
+                              iconBg: const Color(0xFFEDE9FE),
+                              label: 'Clientes Activos',
+                              value: '${stats.clientesActivos}',
+                              trendText: '${stats.clientesVariacion >= 0 ? '↗ +' : '↘ '}${stats.clientesVariacion.toStringAsFixed(1)}%',
+                              trendColor: const Color(0xFF10B981),
+                              isDark: isDark,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildMetricCard(
-                            icon: Icons.inventory_2_outlined,
-                            iconColor: const Color(0xFFEF4444),
-                            iconBg: const Color(0xFFFEE2E2),
-                            label: 'Productos',
-                            value: '${stats.productosTotal}',
-                            trendText: '${stats.insumosBajoStock} bajo stock',
-                            trendColor: const Color(0xFFEF4444),
-                            isDark: isDark,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildMetricCard(
+                              icon: Icons.inventory_2_outlined,
+                              iconColor: const Color(0xFFEF4444),
+                              iconBg: const Color(0xFFFEE2E2),
+                              label: 'Productos',
+                              value: '${stats.productosTotal}',
+                              trendText: '${stats.insumosBajoStock} bajo stock',
+                              trendColor: const Color(0xFFEF4444),
+                              isDark: isDark,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                    ],
+
 
                     // ─── Ventas y Compras Chart ───
                     _buildVentasComprasChart(isDark, dashboardState.ventasChart),
@@ -186,7 +244,97 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
-
+  void _showPeriodPicker(BuildContext context, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return SafeArea(
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : AppColors.grey300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Filtrar por período',
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: _periodos.map((p) {
+                        final isSelected = p == _periodoSeleccionado;
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppColors.primary.withAlpha(20) : (isDark ? Colors.white10 : AppColors.grey50),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.calendar_today_outlined,
+                              size: 16,
+                              color: isSelected ? AppColors.primary : (isDark ? Colors.white54 : AppColors.grey500),
+                            ),
+                          ),
+                          title: Text(
+                            p,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected ? AppColors.primary : (isDark ? Colors.white70 : AppColors.textPrimaryLight),
+                            ),
+                          ),
+                          trailing: isSelected
+                              ? const Icon(Icons.check_rounded, color: AppColors.primary, size: 18)
+                              : null,
+                          onTap: () {
+                            setState(() => _periodoSeleccionado = p);
+                            ref.read(dashboardProvider.notifier).loadDashboardData(periodo: p);
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
 
   Widget _buildMetricCard({
@@ -200,54 +348,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required bool isDark,
   }) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 138),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isDark ? Border.all(color: Colors.white10) : null,
+        borderRadius: BorderRadius.circular(14),
+        border: isDark
+            ? Border.all(color: Colors.white12)
+            : Border.all(color: const Color(0xFFF1F3F5)),
         boxShadow: isDark
             ? null
             : [
                 BoxShadow(
                   color: Colors.black.withAlpha(8),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Top row: icon + trend badge (wrapped in Flexible/FittedBox to prevent horizontal overflows)
+          // Top row: icon + trend badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: isDark ? iconColor.withAlpha(38) : iconBg,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
+                child: Icon(icon, color: iconColor, size: 17),
               ),
               const SizedBox(width: 4),
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                   decoration: BoxDecoration(
                     color: trendColor.withAlpha(20),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
                       trendText,
                       style: GoogleFonts.inter(
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.w700,
                         color: trendColor,
                       ),
@@ -257,31 +406,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ],
           ),
-          // Bottom: value + label
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: GoogleFonts.outfit(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 7),
+          // Value & label compactos y bien centrados
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                letterSpacing: -0.3,
               ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              maxLines: 1,
+            ),
+          ),
+          const SizedBox(height: 1.5),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white60 : AppColors.textSecondaryLight,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -322,25 +472,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               final double width = constraints.maxWidth;
-              final double stepX = (width - 36) / 5;
+              final list = chartData.isNotEmpty
+                  ? chartData
+                  : const [
+                      VentasChartData(mes: 'Sem 1-7', ventas: 0, compras: 0),
+                      VentasChartData(mes: 'Sem 8-14', ventas: 0, compras: 0),
+                      VentasChartData(mes: 'Sem 15-21', ventas: 0, compras: 0),
+                      VentasChartData(mes: 'Sem 22-fin', ventas: 0, compras: 0),
+                    ];
+              final int count = list.length;
+              final double stepX = count > 1 ? (width - 48) / (count - 1) : (width - 48);
               final double selectedX = _selectedMonthIndex != null
-                  ? 32 + _selectedMonthIndex! * stepX
+                  ? 36 + _selectedMonthIndex! * stepX
                   : 0.0;
 
-              final months = chartData.isNotEmpty ? chartData.map((d) => d.mes).toList() : ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
-              final ingresos = chartData.isNotEmpty ? chartData.map((d) => d.ventas).toList() : [12000.0, 15200.0, 19000.0, 22000.0, 26000.0, 28000.0];
-              final egresos = chartData.isNotEmpty ? chartData.map((d) => d.compras).toList() : [7500.0, 9500.0, 11000.0, 13500.0, 15000.0, 16500.0];
-
-              final currentMonth = _selectedMonthIndex != null ? months[_selectedMonthIndex!] : '';
-              final currentIngreso = _selectedMonthIndex != null ? ingresos[_selectedMonthIndex!] : 0;
-              final currentEgreso = _selectedMonthIndex != null ? egresos[_selectedMonthIndex!] : 0;
+              final currentMonth = (_selectedMonthIndex != null && _selectedMonthIndex! < count)
+                  ? list[_selectedMonthIndex!].mes
+                  : '';
+              final currentIngreso = (_selectedMonthIndex != null && _selectedMonthIndex! < count)
+                  ? Formatters.currency(list[_selectedMonthIndex!].ventas)
+                  : '';
+              final currentEgreso = (_selectedMonthIndex != null && _selectedMonthIndex! < count)
+                  ? Formatters.currency(list[_selectedMonthIndex!].compras)
+                  : '';
 
               return GestureDetector(
                 onTapDown: (details) {
                   final double localX = details.localPosition.dx;
-                  final double relativeX = localX - 32;
+                  final double relativeX = localX - 36;
                   int idx = (relativeX + (stepX / 2)) ~/ stepX;
-                  if (idx >= 0 && idx < 6) {
+                  if (idx >= 0 && idx < count) {
                     setState(() {
                       _selectedMonthIndex = (_selectedMonthIndex == idx) ? null : idx;
                     });
@@ -358,13 +519,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: CustomPaint(
                         size: Size.infinite,
                         painter: _LineChartPainter(
+                          data: list,
                           isDark: isDark,
                           selectedIndex: _selectedMonthIndex,
                         ),
                       ),
                     ),
                     // Floating popover tooltip in line chart matching Capture 3
-                    if (_selectedMonthIndex != null)
+                    if (_selectedMonthIndex != null && _selectedMonthIndex! < count)
                       Positioned(
                         top: 10,
                         left: (selectedX - 70).clamp(10, width - 150),
@@ -406,7 +568,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'Ingresos : $currentIngreso',
+                                    'Ventas : $currentIngreso',
                                     style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 11,
@@ -428,7 +590,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'Egresos : $currentEgreso',
+                                    'Compras : $currentEgreso',
                                     style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 11,
@@ -451,9 +613,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _chartLegendItem('Ingresos', const Color(0xFF10B981)),
+              _chartLegendItem('Compras', const Color(0xFF10B981)),
               const SizedBox(width: 24),
-              _chartLegendItem('Egresos', const Color(0xFFEF4444)),
+              _chartLegendItem('Ventas', const Color(0xFFEF4444)),
             ],
           ),
         ],
@@ -496,6 +658,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             {'name': 'Pollo Broaster', 'val': 80},
             {'name': 'Papas Fritas', 'val': 120},
           ];
+    final int maxVal = products.map((e) => e['val'] as int).fold(1, (a, b) => b > a ? b : a);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -577,7 +740,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ),
                                 // Fill Bar green
                                 FractionallySizedBox(
-                                  widthFactor: val / 260.0,
+                                  widthFactor: (val / maxVal).clamp(0.04, 1.0),
                                   child: Container(
                                     height: 16,
                                     decoration: BoxDecoration(
@@ -773,10 +936,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   // Recent Sales Widget
   Widget _buildVentasRecientes(bool isDark) {
-    final recentSales = [
-      {'id': '#0042', 'status': 'Completado', 'client': 'Juan Pérez', 'time': '10:30 AM', 'val': 45000, 'color': const Color(0xFFD1FAE5), 'txtColor': const Color(0xFF065F46)},
-      {'id': '#0041', 'status': 'En proceso', 'client': 'María García', 'time': '10:15 AM', 'val': 32500, 'color': const Color(0xFFFEF3C7), 'txtColor': const Color(0xFF92400E)},
-    ];
+    final ordersState = ref.watch(ordersProvider);
+    final List<Map<String, dynamic>> recentSales = ordersState.orders.isNotEmpty
+        ? ordersState.orders.take(4).map((o) {
+            final isCompleted = o.estado == 'pagado';
+            return {
+              'id': o.id,
+              'status': isCompleted ? 'Completado' : 'Pendiente',
+              'client': o.cliente,
+              'time': o.hora,
+              'val': o.total,
+              'color': isCompleted ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7),
+              'txtColor': isCompleted ? const Color(0xFF065F46) : const Color(0xFF92400E),
+            };
+          }).toList()
+        : [
+            {'id': '#0042', 'status': 'Completado', 'client': 'Juan Pérez', 'time': '10:30 AM', 'val': 45000.0, 'color': const Color(0xFFD1FAE5), 'txtColor': const Color(0xFF065F46)},
+            {'id': '#0041', 'status': 'En proceso', 'client': 'María García', 'time': '10:15 AM', 'val': 32500.0, 'color': const Color(0xFFFEF3C7), 'txtColor': const Color(0xFF92400E)},
+          ];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -879,7 +1056,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const Spacer(),
                     Text(
-                      '\$${_formatPrice((s['val'] as int).toDouble())}',
+                      Formatters.currency((s['val'] as num).toDouble()),
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
@@ -895,23 +1072,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
-
-  String _formatPrice(double val) {
-    final str = val.toStringAsFixed(0);
-    final buffer = StringBuffer();
-    for (int i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) buffer.write('.');
-      buffer.write(str[i]);
-    }
-    return buffer.toString();
-  }
 }
 
 // ─── Custom Line Chart Painter ───
 class _LineChartPainter extends CustomPainter {
+  final List<VentasChartData> data;
   final bool isDark;
   final int? selectedIndex;
-  _LineChartPainter({required this.isDark, this.selectedIndex});
+
+  _LineChartPainter({
+    required this.data,
+    required this.isDark,
+    this.selectedIndex,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -924,29 +1097,52 @@ class _LineChartPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
 
+    if (data.isEmpty) {
+      final y = size.height / 2;
+      canvas.drawLine(Offset(32, y), Offset(size.width, y), gridPaint);
+      return;
+    }
+
+    // Determine maxVal dynamically with comfortable headroom
+    double maxVal = 0;
+    for (var d in data) {
+      if (d.ventas > maxVal) maxVal = d.ventas;
+      if (d.compras > maxVal) maxVal = d.compras;
+    }
+    if (maxVal <= 0) maxVal = 50000;
+    maxVal = maxVal * 1.15; // 15% top headroom
+
     // Draw horizontal dashed lines
     final double stepY = size.height / 4;
     for (int i = 0; i <= 4; i++) {
       final double y = i * stepY;
       canvas.drawLine(Offset(32, y), Offset(size.width, y), gridPaint);
-      
-      // Axis Labels (0, 7500, 15000, 22500, 30000)
-      final val = (4 - i) * 7500;
+
+      final val = (4 - i) * (maxVal / 4);
+      String labelVal;
+      if (val >= 1000000) {
+        labelVal = '${(val / 1000000).toStringAsFixed(1)}M';
+      } else if (val >= 1000) {
+        labelVal = '${(val / 1000).toStringAsFixed(0)}k';
+      } else {
+        labelVal = val.toStringAsFixed(0);
+      }
+
       axisTextPainter.text = TextSpan(
-        text: val.toString(),
+        text: labelVal,
         style: GoogleFonts.inter(fontSize: 8, color: Colors.grey),
       );
       axisTextPainter.layout();
       axisTextPainter.paint(canvas, Offset(0, y - 6));
     }
 
-    // Points mapping for Months (Ene, Feb, Mar, Abr, May, Jun)
-    final double stepX = (size.width - 36) / 5;
-    final List<String> months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
-    for (int i = 0; i < 6; i++) {
-      final double x = 32 + i * stepX;
-      
-      // Draw vertical dotted guides
+    final int count = data.length;
+    final double stepX = count > 1 ? (size.width - 48) / (count - 1) : (size.width - 48);
+
+    // X-Axis labels & guides
+    for (int i = 0; i < count; i++) {
+      final double x = 36 + i * stepX;
+
       canvas.drawLine(
         Offset(x, 0),
         Offset(x, size.height),
@@ -956,33 +1152,25 @@ class _LineChartPainter extends CustomPainter {
           ..style = PaintingStyle.stroke,
       );
 
-      // Label
       axisTextPainter.text = TextSpan(
-        text: months[i],
+        text: data[i].mes,
         style: GoogleFonts.inter(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.w600),
       );
       axisTextPainter.layout();
-      axisTextPainter.paint(canvas, Offset(x - 8, size.height + 4));
+      axisTextPainter.paint(canvas, Offset(x - (axisTextPainter.width / 2), size.height + 4));
     }
 
-    // Draw Ingresos Line (Green)
-    final ingresosPoints = [
-      Offset(32, size.height - (12000 / 30000.0) * size.height),
-      Offset(32 + stepX, size.height - (15000 / 30000.0) * size.height),
-      Offset(32 + 2 * stepX, size.height - (19000 / 30000.0) * size.height),
-      Offset(32 + 3 * stepX, size.height - (22000 / 30000.0) * size.height),
-      Offset(32 + 4 * stepX, size.height - (26000 / 30000.0) * size.height),
-      Offset(32 + 5 * stepX, size.height - (28000 / 30000.0) * size.height),
-    ];
+    // Points
+    final List<Offset> ingresosPoints = [];
+    final List<Offset> egresosPoints = [];
 
-    final egresosPoints = [
-      Offset(32, size.height - (7500 / 30000.0) * size.height),
-      Offset(32 + stepX, size.height - (9000 / 30000.0) * size.height),
-      Offset(32 + 2 * stepX, size.height - (11000 / 30000.0) * size.height),
-      Offset(32 + 3 * stepX, size.height - (13500 / 30000.0) * size.height),
-      Offset(32 + 4 * stepX, size.height - (15000 / 30000.0) * size.height),
-      Offset(32 + 5 * stepX, size.height - (16500 / 30000.0) * size.height),
-    ];
+    for (int i = 0; i < count; i++) {
+      final double x = 36 + i * stepX;
+      final double yIng = size.height - (data[i].ventas / maxVal).clamp(0.0, 1.0) * size.height;
+      final double yEgr = size.height - (data[i].compras / maxVal).clamp(0.0, 1.0) * size.height;
+      ingresosPoints.add(Offset(x, yIng));
+      egresosPoints.add(Offset(x, yEgr));
+    }
 
     final paintLineIngresos = Paint()
       ..color = const Color(0xFF10B981)
@@ -994,51 +1182,45 @@ class _LineChartPainter extends CustomPainter {
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
-    // Draw paths
-    final pathIngresos = Path()..moveTo(ingresosPoints[0].dx, ingresosPoints[0].dy);
-    for (var pt in ingresosPoints) {
-      pathIngresos.lineTo(pt.dx, pt.dy);
-    }
-    canvas.drawPath(pathIngresos, paintLineIngresos);
+    if (ingresosPoints.isNotEmpty) {
+      final pathIngresos = Path()..moveTo(ingresosPoints[0].dx, ingresosPoints[0].dy);
+      for (var pt in ingresosPoints) {
+        pathIngresos.lineTo(pt.dx, pt.dy);
+      }
+      canvas.drawPath(pathIngresos, paintLineIngresos);
 
-    final pathEgresos = Path()..moveTo(egresosPoints[0].dx, egresosPoints[0].dy);
-    for (var pt in egresosPoints) {
-      pathEgresos.lineTo(pt.dx, pt.dy);
-    }
-    canvas.drawPath(pathEgresos, paintLineEgresos);
+      final pathEgresos = Path()..moveTo(egresosPoints[0].dx, egresosPoints[0].dy);
+      for (var pt in egresosPoints) {
+        pathEgresos.lineTo(pt.dx, pt.dy);
+      }
+      canvas.drawPath(pathEgresos, paintLineEgresos);
 
-    // Draw Gradient Areas below lines
-    final paintFillIngresos = Paint()
-      ..color = const Color(0xFF10B981).withAlpha(20)
-      ..style = PaintingStyle.fill;
-    
-    final fillPathIngresos = Path()
-      ..moveTo(ingresosPoints[0].dx, size.height)
-      ..lineTo(ingresosPoints[0].dx, ingresosPoints[0].dy);
-    for (var pt in ingresosPoints) {
-      fillPathIngresos.lineTo(pt.dx, pt.dy);
-    }
-    fillPathIngresos.lineTo(ingresosPoints.last.dx, size.height);
-    fillPathIngresos.close();
-    canvas.drawPath(fillPathIngresos, paintFillIngresos);
+      // Area fill ingresos
+      final fillPathIngresos = Path()
+        ..moveTo(ingresosPoints[0].dx, size.height)
+        ..lineTo(ingresosPoints[0].dx, ingresosPoints[0].dy);
+      for (var pt in ingresosPoints) {
+        fillPathIngresos.lineTo(pt.dx, pt.dy);
+      }
+      fillPathIngresos.lineTo(ingresosPoints.last.dx, size.height);
+      fillPathIngresos.close();
+      canvas.drawPath(fillPathIngresos, Paint()..color = const Color(0xFF10B981).withAlpha(20)..style = PaintingStyle.fill);
 
-    final paintFillEgresos = Paint()
-      ..color = const Color(0xFFEF4444).withAlpha(16)
-      ..style = PaintingStyle.fill;
-    
-    final fillPathEgresos = Path()
-      ..moveTo(egresosPoints[0].dx, size.height)
-      ..lineTo(egresosPoints[0].dx, egresosPoints[0].dy);
-    for (var pt in egresosPoints) {
-      fillPathEgresos.lineTo(pt.dx, pt.dy);
+      // Area fill egresos
+      final fillPathEgresos = Path()
+        ..moveTo(egresosPoints[0].dx, size.height)
+        ..lineTo(egresosPoints[0].dx, egresosPoints[0].dy);
+      for (var pt in egresosPoints) {
+        fillPathEgresos.lineTo(pt.dx, pt.dy);
+      }
+      fillPathEgresos.lineTo(egresosPoints.last.dx, size.height);
+      fillPathEgresos.close();
+      canvas.drawPath(fillPathEgresos, Paint()..color = const Color(0xFFEF4444).withAlpha(16)..style = PaintingStyle.fill);
     }
-    fillPathEgresos.lineTo(egresosPoints.last.dx, size.height);
-    fillPathEgresos.close();
-    canvas.drawPath(fillPathEgresos, paintFillEgresos);
 
-    // Draw selection vertical guide & intersection dots if clicked
-    if (selectedIndex != null) {
-      final double selX = 32 + selectedIndex! * stepX;
+    // Selection guide & highlight dots
+    if (selectedIndex != null && selectedIndex! >= 0 && selectedIndex! < count) {
+      final double selX = 36 + selectedIndex! * stepX;
       canvas.drawLine(
         Offset(selX, 0),
         Offset(selX, size.height),
@@ -1048,22 +1230,17 @@ class _LineChartPainter extends CustomPainter {
           ..style = PaintingStyle.stroke,
       );
 
-      final List<double> ingresos = [12000, 15200, 19000, 22000, 26000, 28000];
-      final List<double> egresos = [7500, 9500, 11000, 13500, 15000, 16500];
+      final double ingresosY = ingresosPoints[selectedIndex!].dy;
+      final double egresosY = egresosPoints[selectedIndex!].dy;
 
-      final double ingresosY = size.height - (ingresos[selectedIndex!] / 30000.0) * size.height;
-      final double egresosY = size.height - (egresos[selectedIndex!] / 30000.0) * size.height;
-
-      // Ingresos Highlight Dot (Green)
       canvas.drawCircle(Offset(selX, ingresosY), 5.5, Paint()..color = Colors.white);
       canvas.drawCircle(Offset(selX, ingresosY), 3.5, Paint()..color = const Color(0xFF10B981));
 
-      // Egresos Highlight Dot (Red)
       canvas.drawCircle(Offset(selX, egresosY), 5.5, Paint()..color = Colors.white);
       canvas.drawCircle(Offset(selX, egresosY), 3.5, Paint()..color = const Color(0xFFEF4444));
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _LineChartPainter oldDelegate) => true;
 }

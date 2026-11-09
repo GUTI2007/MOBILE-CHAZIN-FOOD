@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_dimens.dart';
+import '../../core/utils/security_sanitizer.dart';
 
 /// TextField estilizado con label flotante y validación
 class AppTextField extends StatelessWidget {
@@ -34,11 +35,19 @@ class AppTextField extends StatelessWidget {
     this.focusNode,
   });
 
+  String? _effectiveValidator(String? value) {
+    if (value != null && value.isNotEmpty) {
+      final injectionErr = SecurityValidators.validateNoInjection(value, fieldName: label);
+      if (injectionErr != null) return injectionErr;
+    }
+    return validator?.call(value);
+  }
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      validator: validator,
+      validator: _effectiveValidator,
       keyboardType: keyboardType,
       obscureText: obscureText,
       maxLines: maxLines,

@@ -9,9 +9,12 @@ class DashboardRepository {
   DashboardRepository(this._apiClient);
 
   /// Obtener métricas resumidas desde /api/dashboard/stats
-  Future<DashboardStats> getStats() async {
+  Future<DashboardStats> getStats({String? periodo}) async {
     try {
-      final response = await _apiClient.get('/dashboard/stats');
+      final response = await _apiClient.get(
+        '/dashboard/stats',
+        queryParameters: periodo != null && periodo.isNotEmpty ? {'periodo': periodo} : null,
+      );
       if (response.statusCode == 200 && response.data is Map) {
         return DashboardStats.fromJson(Map<String, dynamic>.from(response.data));
       }
@@ -24,9 +27,12 @@ class DashboardRepository {
   }
 
   /// Obtener datos para gráfico de ventas y compras desde /api/dashboard/ventas-chart
-  Future<List<VentasChartData>> getVentasChart() async {
+  Future<List<VentasChartData>> getVentasChart({String? periodo}) async {
     try {
-      final response = await _apiClient.get('/dashboard/ventas-chart');
+      final response = await _apiClient.get(
+        '/dashboard/ventas-chart',
+        queryParameters: periodo != null && periodo.isNotEmpty ? {'periodo': periodo} : null,
+      );
       if (response.statusCode == 200 && response.data is List) {
         final List list = response.data;
         return list.map((item) => VentasChartData.fromJson(Map<String, dynamic>.from(item))).toList();
@@ -52,9 +58,12 @@ class DashboardRepository {
   }
 
   /// Obtener productos populares desde /api/dashboard/productos-populares
-  Future<List<PopularProductItem>> getProductosPopulares() async {
+  Future<List<PopularProductItem>> getProductosPopulares({String? periodo}) async {
     try {
-      final response = await _apiClient.get('/dashboard/productos-populares');
+      final response = await _apiClient.get(
+        '/dashboard/productos-populares',
+        queryParameters: periodo != null && periodo.isNotEmpty ? {'periodo': periodo} : null,
+      );
       if (response.statusCode == 200 && response.data is List) {
         final List list = response.data;
         return list.map((item) => PopularProductItem.fromJson(Map<String, dynamic>.from(item))).toList();

@@ -4,6 +4,7 @@ import '../../../core/constants/app_dimens.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/models/sale_model.dart';
+import '../../../widgets/common_app_bar.dart';
 
 class SaleDetailScreen extends StatelessWidget {
   final Sale sale;
@@ -15,8 +16,9 @@ class SaleDetailScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Venta #${sale.id.replaceAll('sale_', '').substring(0, 3)}'),
+      appBar: CommonAppBar(
+        title: 'Venta #${sale.id.replaceAll('sale_', '').substring(0, 3)}',
+        onClose: () => Navigator.of(context).pop(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppDimens.paddingScreen),

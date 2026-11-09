@@ -42,11 +42,16 @@ class Order {
   });
 }
 
+String _mockDate(int daysAgo) {
+  final dt = DateTime.now().subtract(Duration(days: daysAgo));
+  return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+}
+
 final List<Order> pedidosMock = [
   Order(
     id: 'PED-001',
     cliente: 'Juan García',
-    fecha: '2026-06-09',
+    fecha: _mockDate(0),
     hora: '12:30',
     horaFin: '12:45',
     estado: 'pagado',
@@ -64,7 +69,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-002',
     cliente: 'María López',
-    fecha: '2026-06-09',
+    fecha: _mockDate(1),
     hora: '13:05',
     horaFin: '13:20',
     estado: 'pagado',
@@ -80,7 +85,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-003',
     cliente: 'Carlos Pérez',
-    fecha: '2026-06-09',
+    fecha: _mockDate(2),
     hora: '13:45',
     horaFin: '14:00',
     estado: 'pagado',
@@ -97,7 +102,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-004',
     cliente: 'Ana Martínez',
-    fecha: '2026-06-08',
+    fecha: _mockDate(3),
     hora: '11:20',
     horaFin: '11:35',
     estado: 'pagado',
@@ -114,7 +119,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-005',
     cliente: 'Luis Rodríguez',
-    fecha: '2026-06-08',
+    fecha: _mockDate(4),
     hora: '14:15',
     horaFin: '14:30',
     estado: 'pagado',
@@ -131,7 +136,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-006',
     cliente: 'Sofia Gómez',
-    fecha: '2026-06-07',
+    fecha: _mockDate(5),
     hora: '12:00',
     horaFin: '12:15',
     estado: 'pagado',
@@ -147,7 +152,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-007',
     cliente: 'Pedro Vargas',
-    fecha: '2026-06-07',
+    fecha: _mockDate(6),
     hora: '19:30',
     horaFin: '19:45',
     estado: 'pagado',
@@ -164,7 +169,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-008',
     cliente: 'Cliente General',
-    fecha: '2026-06-06',
+    fecha: _mockDate(10),
     hora: '13:00',
     horaFin: '13:15',
     estado: 'pagado',
@@ -180,7 +185,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-009',
     cliente: 'Diana Torres',
-    fecha: '2026-06-06',
+    fecha: _mockDate(15),
     hora: '17:45',
     horaFin: '18:00',
     estado: 'pagado',
@@ -198,7 +203,7 @@ final List<Order> pedidosMock = [
   Order(
     id: 'PED-010',
     cliente: 'Andrés Cano',
-    fecha: '2026-06-05',
+    fecha: _mockDate(35),
     hora: '20:10',
     horaFin: '20:25',
     estado: 'pagado',

@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/models/client_model.dart';
 import '../providers/clients_provider.dart';
+import '../../../widgets/common_app_bar.dart';
 
 /// Pantalla de gestión de clientes — sub-ítem de Ventas en drawer
 class ClientListScreen extends ConsumerWidget {
@@ -16,28 +17,10 @@ class ClientListScreen extends ConsumerWidget {
     final clientsAsync = ref.watch(clientsListProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                'assets/chazin_logo.png',
-                width: 28,
-                height: 28,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text('Chazin Food', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18)),
-          ],
-        ),
-        centerTitle: true,
+      appBar: CommonAppBar(
+        title: 'Gestión de Clientes',
+        onClose: () => Navigator.of(context).pop(),
+        showRefresh: false,
       ),
       body: clientsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),

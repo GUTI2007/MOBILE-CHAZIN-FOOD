@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../providers/auth_provider.dart';
 import 'widgets/cross_label_input_field.dart';
@@ -109,8 +110,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    brandColor.withOpacity(0.15),
-                    brandColor.withOpacity(0.0),
+                    brandColor.withValues(alpha: 0.15),
+                    brandColor.withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -126,8 +127,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF30475E).withOpacity(0.15),
-                    const Color(0xFF30475E).withOpacity(0.0),
+                    const Color(0xFF30475E).withValues(alpha: 0.15),
+                    const Color(0xFF30475E).withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -155,7 +156,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen>
                     width: double.infinity,
                     constraints: const BoxConstraints(maxWidth: 400),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(
                         color: Colors.grey.shade200,
@@ -163,7 +164,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
+                          color: Colors.black.withValues(alpha: 0.06),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -256,15 +257,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen>
                                         });
                                       },
                                     ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Campo requerido';
-                                      }
-                                      if (value.length < 6) {
-                                        return 'La contraseña debe tener al menos 6 caracteres';
-                                      }
-                                      return null;
-                                    },
+                                    validator: (value) => Validators.password(value, minLength: 6),
                                   ),
                                   const SizedBox(height: 20),
 
@@ -299,9 +292,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen>
                                       },
                                     ),
                                     validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Campo requerido';
-                                      }
+                                      final baseErr = Validators.password(value, minLength: 6);
+                                      if (baseErr != null) return baseErr;
                                       if (value != _newPasswordController.text) {
                                         return 'Las contraseñas no coinciden';
                                       }
@@ -324,7 +316,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen>
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: brandColor.withOpacity(0.3),
+                                            color: brandColor.withValues(alpha: 0.3),
                                             blurRadius: 12,
                                             offset: const Offset(0, 6),
                                           ),

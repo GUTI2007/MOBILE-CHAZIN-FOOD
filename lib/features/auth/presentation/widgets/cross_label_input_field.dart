@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/utils/security_sanitizer.dart';
 
 /// Input estilizado con etiqueta flotante, borde dinámico y cambio de color cuando tiene datos
 class CrossLabelInputField extends StatefulWidget {
@@ -61,6 +62,16 @@ class _CrossLabelInputFieldState extends State<CrossLabelInputField> {
     super.dispose();
   }
 
+  FormFieldValidator<String>? get _effectiveValidator {
+    return (value) {
+      if (value != null && value.isNotEmpty) {
+        final injectionErr = SecurityValidators.validateNoInjection(value, fieldName: widget.label);
+        if (injectionErr != null) return injectionErr;
+      }
+      return widget.validator?.call(value);
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     const brandColor = Color(0xFFFF3E55);
@@ -79,7 +90,7 @@ class _CrossLabelInputFieldState extends State<CrossLabelInputField> {
         : (hasData ? const Color(0xFFB0B7C3) : Colors.grey.shade200);
         
     final suffixIconColor = hasData 
-        ? Colors.white.withOpacity(0.85) 
+        ? Colors.white.withValues(alpha: 0.85) 
         : Colors.grey.shade400;
 
     return Column(
@@ -101,7 +112,7 @@ class _CrossLabelInputFieldState extends State<CrossLabelInputField> {
             boxShadow: _isFocused
                 ? [
                     BoxShadow(
-                      color: brandColor.withOpacity(0.08),
+                      color: brandColor.withValues(alpha: 0.08),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -113,7 +124,7 @@ class _CrossLabelInputFieldState extends State<CrossLabelInputField> {
             focusNode: _focusNode,
             obscureText: widget.obscureText,
             keyboardType: widget.keyboardType,
-            validator: widget.validator,
+            validator: _effectiveValidator,
             style: GoogleFonts.poppins(
               fontSize: 15,
               fontWeight: FontWeight.w500,
@@ -122,7 +133,7 @@ class _CrossLabelInputFieldState extends State<CrossLabelInputField> {
             decoration: InputDecoration(
               hintText: widget.hintText,
               hintStyle: GoogleFonts.poppins(
-                color: hasData ? Colors.white.withOpacity(0.7) : Colors.grey.shade400,
+                color: hasData ? Colors.white.withValues(alpha: 0.7) : Colors.grey.shade400,
                 fontSize: 14,
               ),
               prefixIcon: Icon(

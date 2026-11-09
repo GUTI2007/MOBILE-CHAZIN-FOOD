@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../routes/app_shell.dart';
+import '../../../core/utils/helpers.dart';
 import '../data/order.dart';
 import '../providers/orders_provider.dart';
 import '../../../services/excel_export_service.dart';
 import 'widgets/custom_charts.dart';
+import '../../../widgets/common_app_bar.dart';
 
 class ManagementScreen extends ConsumerStatefulWidget {
   const ManagementScreen({super.key});
@@ -21,6 +21,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
   String _fechaFiltro = '';
   String _metodoPagoFiltro = 'todos';
   bool _showFilters = false;
+  bool _showKpis = true; // toggle para mostrar/ocultar KPIs
   String _periodoFiltro = 'mes'; // default matching Capture 2
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
@@ -28,7 +29,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -44,18 +45,29 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
 
   // Filter ranges
   Map<String, String> _getRangoFecha() {
-    const hoyStr = '2026-06-23'; // baseline mock date from GestionVentas.tsx
-    final DateTime hoy = DateTime.parse(hoyStr);
+    final DateTime hoy = DateTime.now();
+    final String hoyStr = _formatDate(hoy);
 
     if (_periodoFiltro == 'hoy') {
       return {'desde': hoyStr, 'hasta': hoyStr};
     } else if (_periodoFiltro == 'semana') {
       final desde = hoy.subtract(const Duration(days: 7));
       return {'desde': _formatDate(desde), 'hasta': hoyStr};
-    } else if (_periodoFiltro == 'mes') {
+    } else if (_periodoFiltro == 'mes' || _periodoFiltro == 'mes_actual') {
       final desde = DateTime(hoy.year, hoy.month, 1);
+      final hasta = DateTime(hoy.year, hoy.month + 1, 0);
+      return {'desde': _formatDate(desde), 'hasta': _formatDate(hasta)};
+    } else if (_periodoFiltro == 'mes_anterior') {
+      final desde = DateTime(hoy.year, hoy.month - 1, 1);
+      final hasta = DateTime(hoy.year, hoy.month, 0);
+      return {'desde': _formatDate(desde), 'hasta': _formatDate(hasta)};
+    } else if (_periodoFiltro == '3_meses' || _periodoFiltro == 'ultimos_3_meses') {
+      final desde = DateTime(hoy.year, hoy.month - 2, 1);
       return {'desde': _formatDate(desde), 'hasta': hoyStr};
-    } else if (_periodoFiltro == 'ano') {
+    } else if (_periodoFiltro == '6_meses' || _periodoFiltro == 'ultimos_6_meses') {
+      final desde = DateTime(hoy.year, hoy.month - 5, 1);
+      return {'desde': _formatDate(desde), 'hasta': hoyStr};
+    } else if (_periodoFiltro == 'ano' || _periodoFiltro == 'ano_actual') {
       final desde = DateTime(hoy.year, 1, 1);
       return {'desde': _formatDate(desde), 'hasta': hoyStr};
     } else {
@@ -89,8 +101,11 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
   String get _periodoLabel {
     if (_periodoFiltro == 'hoy') return 'Hoy';
     if (_periodoFiltro == 'semana') return '7 días';
-    if (_periodoFiltro == 'mes') return 'Este mes';
-    if (_periodoFiltro == 'ano') return 'Este año';
+    if (_periodoFiltro == 'mes' || _periodoFiltro == 'mes_actual') return 'Mes Actual';
+    if (_periodoFiltro == 'mes_anterior') return 'Mes Anterior';
+    if (_periodoFiltro == '3_meses' || _periodoFiltro == 'ultimos_3_meses') return 'Últimos 3 Meses';
+    if (_periodoFiltro == '6_meses' || _periodoFiltro == 'ultimos_6_meses') return 'Últimos 6 Meses';
+    if (_periodoFiltro == 'ano' || _periodoFiltro == 'ano_actual') return 'Año Actual';
     return 'Personalizado';
   }
 
@@ -172,62 +187,14 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu_rounded),
-          onPressed: () => AppShell.scaffoldKey.currentState?.openDrawer(),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                'assets/chazin_logo.png',
-                width: 28,
-                height: 28,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text('Chazin Food', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 18)),
-          ],
-        ),
-        centerTitle: true,
-        actions: [
-          // Badge de mock/API
-          if (ordersState.usingMock)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Tooltip(
-                message: 'Usando datos de demo (sin conexión a API)',
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withAlpha(40),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.orange.withAlpha(80)),
-                  ),
-                  child: const Text('Demo', style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ),
-          // Botón refrescar
-          IconButton(
-            tooltip: 'Actualizar pedidos',
-            icon: ordersState.isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh_rounded),
-            onPressed: ordersState.isLoading
-                ? null
-                : () => ref.read(ordersProvider.notifier).refresh(),
-          ),
-        ],
+      appBar: CommonAppBar(
+        showBrandHeader: true,
+        showDrawerMenu: true,
+        showDarkModeToggle: true,
+        showRefresh: true,
+        onRefresh: ordersState.isLoading
+            ? null
+            : () => ref.read(ordersProvider.notifier).refresh(),
       ),
       body: SafeArea(
         child: NestedScrollView(
@@ -241,27 +208,71 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                     // Dashboard Header
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Column(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Gestión de Ventas',
-                            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textPrimary),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Gestión de Ventas',
+                                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textPrimary),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Monitoreo y análisis comercial de ventas',
+                                  style: TextStyle(fontSize: 12, color: textSecondary),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Monitoreo de pedidos pagados y análisis comercial',
-                            style: TextStyle(fontSize: 12, color: textSecondary),
+                          // Botón toggle para mostrar/ocultar KPIs
+                          GestureDetector(
+                            onTap: () => setState(() => _showKpis = !_showKpis),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _showKpis
+                                    ? const Color(0xFFF05454).withAlpha(20)
+                                    : (isDark ? Colors.white.withAlpha(15) : Colors.grey[100]),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _showKpis ? const Color(0xFFF05454) : borderColor,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _showKpis ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    size: 14,
+                                    color: _showKpis ? const Color(0xFFF05454) : textSecondary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _showKpis ? 'KPIs' : 'KPIs',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: _showKpis ? const Color(0xFFF05454) : textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
 
-                    // KPI Grid (Capture 1 Style - 2x2 grid layout, overflow-safe)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-                      child: _buildKpis(filteredOrders, totalVentas, ticketPromedio, totalDescuentos, cardColor, textPrimary, textSecondary, borderColor, isDark),
-                    ),
+                    // KPI Grid — condicional al toggle
+                    if (_showKpis)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                        child: _buildKpis(filteredOrders, totalVentas, ticketPromedio, totalDescuentos, cardColor, textPrimary, textSecondary, borderColor, isDark),
+                      ),
                     const SizedBox(height: 8),
                   ],
                 ),
@@ -275,14 +286,13 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                     color: surfaceColor,
                     child: TabBar(
                       controller: _tabController,
-                      indicatorColor: const Color(0xFFF05454), // Active red indicator
+                      indicatorColor: const Color(0xFFF05454),
                       labelColor: const Color(0xFFF05454),
                       unselectedLabelColor: isDark ? Colors.white38 : Colors.grey[600],
                       labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       tabs: const [
-                        Tab(icon: Icon(Icons.check_circle_outline, size: 20), text: 'Pedidos'),
-                        Tab(icon: Icon(Icons.access_time, size: 20), text: 'Historial'),
-                        Tab(icon: Icon(Icons.bar_chart_outlined, size: 20), text: 'Reportes'),
+                        Tab(icon: Icon(Icons.point_of_sale_outlined, size: 20), text: 'Ventas'),
+                        Tab(icon: Icon(Icons.bar_chart_outlined, size: 20), text: 'Dashboard'),
                       ],
                     ),
                   ),
@@ -293,13 +303,10 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
           body: TabBarView(
             controller: _tabController,
             children: [
-              // Tab 1: Pedidos Pagados
+              // Tab 1: Ventas
               _buildPedidosTab(filteredOrders, surfaceColor, textPrimary, textSecondary, borderColor, isDark, cardColor, backgroundColor),
 
-              // Tab 2: Historial
-              _buildHistorialTab(cardColor, textPrimary, textSecondary, borderColor, isDark, allOrders),
-
-              // Tab 3: Reportes
+              // Tab 2: Dashboard (antes Reportes)
               _buildReportesTab(filteredOrders, cardColor, textPrimary, textSecondary, borderColor, isDark, surfaceColor),
             ],
           ),
@@ -310,7 +317,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
 
   // --- Capture 1 KPI 2x2 Layout ---
   Widget _buildKpis(List<Order> filteredOrders, double totalVentas, double ticketPromedio, double totalDescuentos, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
-    String formatVal(double val) => '\$${val.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
+    String formatVal(double val) => '\$${val.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} COP';
 
     final uniqueClients = filteredOrders.map((o) => o.cliente).toSet().length;
     final frecuenciaCompra = uniqueClients == 0 ? 0.0 : filteredOrders.length / uniqueClients;
@@ -397,7 +404,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
 
   Widget _kpiCard(String title, String value, String subtitle, IconData icon, Color bgColor, Color iconColor, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -415,7 +422,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
             decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
             child: Icon(icon, size: 18, color: iconColor),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -472,10 +479,13 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
+                            _periodButton('mes', 'Mes Actual', isDark),
+                            _periodButton('mes_anterior', 'Mes Anterior', isDark),
+                            _periodButton('3_meses', 'Últimos 3 Meses', isDark),
+                            _periodButton('6_meses', 'Últimos 6 Meses', isDark),
+                            _periodButton('ano', 'Año Actual', isDark),
                             _periodButton('hoy', 'Hoy', isDark),
                             _periodButton('semana', '7 días', isDark),
-                            _periodButton('mes', 'Este mes', isDark),
-                            _periodButton('ano', 'Este año', isDark),
                             _periodButton('personalizado', 'Personalizado', isDark),
                           ],
                         ),
@@ -740,7 +750,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Text(
-              '${filtered.length} pedido(s) encontrado(s)',
+              '${filtered.length} venta(s) encontrada(s)',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
             ),
           );
@@ -752,9 +762,9 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.checklist_rtl, size: 56, color: isDark ? Colors.white24 : Colors.grey[300]),
+                    Icon(Icons.point_of_sale_outlined, size: 56, color: isDark ? Colors.white24 : Colors.grey[300]),
                     const SizedBox(height: 8),
-                    Text('No se encontraron pedidos', style: TextStyle(fontWeight: FontWeight.bold, color: textSecondary)),
+                    Text('No se encontraron ventas', style: TextStyle(fontWeight: FontWeight.bold, color: textSecondary)),
                   ],
                 ),
               ),
@@ -811,11 +821,11 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
             : 'Transferencia';
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor),
         boxShadow: [
           if (!isDark) BoxShadow(color: Colors.black.withAlpha(2), blurRadius: 4, offset: const Offset(0, 2)),
@@ -824,7 +834,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: ID & Status Badge
+          // Row 1: ID only (sin badge de estado)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -832,54 +842,36 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                 order.id,
                 style: TextStyle(fontFamily: 'Courier', fontSize: 11, color: textSecondary, fontWeight: FontWeight.bold),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1B3B22) : const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check, size: 10, color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Pagado',
-                      style: TextStyle(color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32), fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              )
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
           // Row 2: Customer name
           Text(
             order.cliente,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textPrimary),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           // Row 3: Date/Time range & Payment tag
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${order.fecha} ${order.hora} – ${order.horaFin}',
-                style: TextStyle(fontSize: 11, color: textSecondary),
+                '${order.fecha} ${order.hora}',
+                style: TextStyle(fontSize: 10, color: textSecondary),
               ),
               Text(
                 paymentLabel,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textPrimary),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textPrimary),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           // Row 4: Delivery Badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF3B1C3D) : const Color(0xFFF3E5F5),
               borderRadius: BorderRadius.circular(8),
@@ -890,11 +882,11 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                   : order.tipoEntrega == 'domicilio'
                       ? 'Domicilio'
                       : 'Recoger',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFCE93D8) : Colors.purple),
+              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFCE93D8) : Colors.purple),
             ),
           ),
 
-          const Divider(height: 24),
+          const Divider(height: 16),
 
           // Action Detail Button Trigger
           Align(
@@ -904,11 +896,11 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.visibility, size: 14, color: Color(0xFFF05454)),
+                  Icon(Icons.visibility, size: 13, color: Color(0xFFF05454)),
                   SizedBox(width: 4),
                   Text(
-                    'Ver detalle',
-                    style: TextStyle(color: Color(0xFFF05454), fontSize: 12, fontWeight: FontWeight.bold),
+                    'Ver venta',
+                    style: TextStyle(color: Color(0xFFF05454), fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -919,231 +911,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
     );
   }
 
-  // --- Tab 2: Historial Tab builder (Capture 4 Style, horizontal-overflow safe Wrap) ---
-  Widget _buildHistorialTab(Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark, List<Order> allOrders) {
-    final rango = _getRangoFecha();
-    final historical = [...allOrders].where((p) {
-      bool matchPeriodo = true;
-      if (rango['desde']!.isNotEmpty) {
-        matchPeriodo = matchPeriodo && p.fecha.compareTo(rango['desde']!) >= 0;
-      }
-      if (rango['hasta']!.isNotEmpty) {
-        matchPeriodo = matchPeriodo && p.fecha.compareTo(rango['hasta']!) <= 0;
-      }
-      return matchPeriodo;
-    }).toList();
-
-    // Sort newest first
-    historical.sort((a, b) {
-      int dateComp = b.fecha.compareTo(a.fecha);
-      if (dateComp != 0) return dateComp;
-      return b.hora.compareTo(a.hora);
-    });
-
-    return Column(
-      children: [
-        // Historial Title and Export Button Header (Horizontal Wrap layout to avoid clipping)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-          child: Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Text(
-                'Historial — $_periodoLabel',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary),
-              ),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  if (historical.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No hay pedidos para exportar en este período')),
-                    );
-                    return;
-                  }
-                  await ExcelExportService.instance.exportHistorial(
-                    historical,
-                    _periodoLabel,
-                    context,
-                  );
-                },
-                icon: Icon(Icons.download, size: 14, color: textPrimary),
-                label: Text('Exportar', style: TextStyle(color: textPrimary, fontSize: 11, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  side: BorderSide(color: borderColor),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  minimumSize: Size.zero,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // History lists
-        Expanded(
-          child: historical.isEmpty
-              ? Center(
-                  child: Text('Historial vacío para el período', style: TextStyle(color: textSecondary)),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: historical.length,
-                  itemBuilder: (context, index) {
-                    final order = historical[index];
-                    return _historialCard(order, cardColor, textPrimary, textSecondary, borderColor, isDark);
-                  },
-                ),
-        )
-      ],
-    );
-  }
-
-  // --- Historial item card (Capture 4 details) ---
-  Widget _historialCard(Order order, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          if (!isDark) BoxShadow(color: Colors.black.withAlpha(2), blurRadius: 4, offset: const Offset(0, 2)),
-        ],
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1: Initial circle avatar, Name & metadata
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: const Color(0xFFF05454),
-                child: Text(
-                  order.cliente.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          order.cliente,
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          order.id,
-                          style: TextStyle(fontFamily: 'Courier', fontSize: 11, color: textSecondary, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today_outlined, size: 12, color: textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          order.fecha,
-                          style: TextStyle(fontSize: 11, color: textSecondary),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.access_time_outlined, size: 12, color: textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${order.hora} – ${order.horaFin}',
-                          style: TextStyle(fontSize: 11, color: textSecondary),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Row 2: Price & Detalle inline eye link
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (order.descuento > 0)
-                    Text(
-                      '\$${order.subtotal.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                      style: TextStyle(decoration: TextDecoration.lineThrough, fontSize: 11, color: textSecondary),
-                    ),
-                  Row(
-                    children: [
-                      Text(
-                        '\$${order.total.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: textPrimary),
-                      ),
-                      if (order.descuento > 0) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          '-${order.descuento.toStringAsFixed(0)}% desc.',
-                          style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
-                        )
-                      ]
-                    ],
-                  ),
-                ],
-              ),
-              InkWell(
-                onTap: () => _showOrderDetail(order, cardColor, textPrimary, textSecondary, borderColor, isDark),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.visibility, size: 14, color: Color(0xFFF05454)),
-                    SizedBox(width: 4),
-                    Text(
-                      'Detalle',
-                      style: TextStyle(color: Color(0xFFF05454), fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 20),
-
-          // Row 3: Horizontal item pill tags
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: order.detalle.map((item) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withAlpha(10) : Colors.grey[50],
-                  border: Border.all(color: borderColor),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  '${item.cantidad}x ${item.nombre}',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textPrimary),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Tab 3: Reportes Tab builder (Capture 5 & Executive Summary Table) ---
+  // --- Tab 2: Dashboard / Reportes Tab builder ---
   Widget _buildReportesTab(List<Order> filtered, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark, Color surfaceColor) {
     // Dynamic calculations for charts
     final dailyRevenue = _getDailyRevenueData(filtered);
@@ -1242,21 +1010,8 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
     int countPedidos = filtered.length;
     double avgTicket = countPedidos == 0 ? 0.0 : sumTotal / countPedidos;
 
-    // Map date strings to day of week names
-    final daysFull = {
-      '2026-06-23': 'Martes',
-      '2026-06-22': 'Lunes',
-      '2026-06-21': 'Domingo',
-      '2026-06-20': 'Sábado',
-      '2026-06-19': 'Viernes',
-      '2026-06-18': 'Jueves',
-      '2026-06-17': 'Miércoles',
-      '2026-06-09': 'Martes',
-      '2026-06-08': 'Lunes',
-      '2026-06-07': 'Domingo',
-      '2026-06-06': 'Sábado',
-      '2026-06-05': 'Viernes',
-    };
+    // Dynamic weekdays in Spanish
+    const weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
     // Calculate top day sales
     Map<String, double> daySales = {};
@@ -1266,8 +1021,9 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
     String topDayStr = 'N/A';
     if (daySales.isNotEmpty) {
       var topDayEntry = daySales.entries.reduce((a, b) => a.value > b.value ? a : b);
-      String dayLabel = daysFull[topDayEntry.key] ?? topDayEntry.key;
-      topDayStr = '$dayLabel — \$${topDayEntry.value.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
+      final parsedDt = DateTime.tryParse(topDayEntry.key);
+      String dayLabel = (parsedDt != null) ? weekdays[parsedDt.weekday - 1] : topDayEntry.key;
+      topDayStr = '$dayLabel — ${Formatters.currency(topDayEntry.value)}';
     }
 
     // Calculate star product sold
@@ -1300,7 +1056,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
       favPayment = '$methodLabel (${pct.toStringAsFixed(0)}%)';
     }
 
-    String formatVal(double val) => '\$${val.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
+    String formatVal(double val) => '\$${val.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} COP';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1368,16 +1124,16 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
         double ivaVal = (baseVal * 0.19).roundToDouble();
 
         String deliveryText = order.tipoEntrega == 'mesa'
-            ? '🍽️ En Mesa'
+            ? 'En Mesa'
             : order.tipoEntrega == 'domicilio'
-                ? '🛵 Domicilio'
-                : '🏪 Recoger';
+                ? 'Domicilio'
+                : 'Recoger';
 
         String paymentText = order.metodoPago == 'efectivo'
-            ? '💵 Efectivo'
+            ? 'Efectivo'
             : order.metodoPago == 'tarjeta'
-                ? '💳 Tarjeta'
-                : '📲 Transferencia';
+                ? 'Tarjeta'
+                : 'Transferencia';
 
         return Container(
           decoration: BoxDecoration(
@@ -1448,30 +1204,12 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                     ),
                     const SizedBox(height: 16),
 
-                    // Green Pagado Banner
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFC8E6C9)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.check_circle_outline, color: Color(0xFF2E7D32), size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            'Pagado',
-                            style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // NO se muestra banner "Pagado"
                     const SizedBox(height: 20),
 
                     // Products header
                     Text(
-                      'Productos del pedido (${order.detalle.length})',
+                      'Productos de la venta (${order.detalle.length})',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textPrimary),
                     ),
                     const SizedBox(height: 10),
@@ -1501,7 +1239,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '${item.cantidad} x \$${item.precio.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                                    '${item.cantidad} x \$${item.precio.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} COP',
                                     style: TextStyle(fontSize: 11, color: textSecondary),
                                   ),
                                 ],
@@ -1509,7 +1247,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '\$${(item.precio * item.cantidad).toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                              '\$${(item.precio * item.cantidad).toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} COP',
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary),
                             ),
                           ],
@@ -1521,22 +1259,86 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                     const Divider(),
                     const SizedBox(height: 8),
 
-                    // Totals breakdown matching Capture 3
-                    _breakdownRow('Subtotal', '\$${subtotal.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}', false, false, textPrimary, textSecondary),
+                    // Totals breakdown
+                    _breakdownRow('Subtotal', '\$${subtotal.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} COP', false, false, textPrimary, textSecondary),
                     if (order.descuento > 0) ...[
                       const SizedBox(height: 6),
                       _breakdownRow(
                           'Descuento (${order.descuento.toStringAsFixed(0)}%)',
-                          '-\$${discountAmount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                          '-\$${discountAmount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} COP',
                           true,
                           false,
                           textPrimary,
                           textSecondary),
                     ],
                     const SizedBox(height: 6),
-                    _breakdownRow('IVA (19%)', '\$${ivaVal.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}', false, false, textPrimary, textSecondary),
+                    // IVA como monto en dinero (no porcentaje)
+                    _breakdownRow('Total IVA', '\$${ivaVal.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} COP', false, false, textPrimary, textSecondary),
                     const Divider(height: 24),
-                    _breakdownRow('Total', '\$${order.total.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}', false, true, textPrimary, textSecondary),
+                    _breakdownRow('Total', '\$${order.total.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} COP', false, true, textPrimary, textSecondary),
+                    const SizedBox(height: 20),
+
+                    // ─── Botones de acción de factura ───
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Acciones de Factura',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textPrimary),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _invoiceActionButton(
+                            icon: Icons.print_outlined,
+                            label: 'Imprimir',
+                            color: const Color(0xFF3B82F6),
+                            onTap: () {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Imprimiendo factura ${order.id}...'),
+                                  backgroundColor: const Color(0xFF3B82F6),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _invoiceActionButton(
+                            icon: Icons.download_outlined,
+                            label: 'Exportar',
+                            color: const Color(0xFF10B981),
+                            onTap: () async {
+                              Navigator.pop(context);
+                              await ExcelExportService.instance.exportHistorial(
+                                [order],
+                                order.id,
+                                context,
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _invoiceActionButton(
+                            icon: Icons.email_outlined,
+                            label: 'Correo',
+                            color: const Color(0xFFF05454),
+                            onTap: () {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Enviando factura por correo (${order.id})...'),
+                                  backgroundColor: const Color(0xFFF05454),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -1576,6 +1378,39 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
     );
   }
 
+  Widget _invoiceActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withAlpha(20),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withAlpha(80)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _breakdownRow(String label, String value, bool isDiscount, bool isTotal, Color textPrimary, Color textSecondary) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1594,7 +1429,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
             fontSize: isTotal ? 18 : 12,
             fontWeight: FontWeight.bold,
             color: isTotal
-                ? const Color(0xFFF05454) // Red total matching Capture 3
+                ? const Color(0xFFF05454)
                 : isDiscount
                     ? Colors.green
                     : textPrimary,

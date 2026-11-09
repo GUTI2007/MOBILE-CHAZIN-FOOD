@@ -25,51 +25,55 @@ class StatCard extends StatelessWidget {
     final cardColor = color ?? AppColors.primary;
 
     return Container(
-      padding: const EdgeInsets.all(AppDimens.md),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppDimens.radiusLg),
+        borderRadius: BorderRadius.circular(AppDimens.radiusMd),
         border: isDark
             ? Border.all(color: Colors.white.withAlpha(13))
-            : null,
+            : Border.all(color: AppColors.grey200),
         boxShadow: isDark
             ? null
             : [
                 BoxShadow(
-                  color: AppColors.grey300.withAlpha(77),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: AppColors.grey300.withAlpha(50),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
               ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(AppDimens.sm),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: (iconBackgroundColor ?? cardColor).withAlpha(26),
-              borderRadius: BorderRadius.circular(AppDimens.radiusMd),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
               color: cardColor,
-              size: AppDimens.iconMd,
+              size: 18,
             ),
           ),
-          const SizedBox(height: AppDimens.sm),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cardColor,
-                ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cardColor,
+                  ),
+            ),
           ),
-          const SizedBox(height: AppDimens.xs),
+          const SizedBox(height: 2),
           Text(
             title,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
