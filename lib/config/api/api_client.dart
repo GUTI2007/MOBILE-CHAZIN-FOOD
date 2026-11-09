@@ -11,14 +11,21 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 /// Configuración centralizada del cliente HTTP Dio para la App Móvil Chazin Food
 /// Cumple con OWASP Mobile Top 10 y MASVS (MASVS-STORAGE / MASVS-NETWORK)
 class ApiClient {
-  /// IP local IPv4 de la máquina de desarrollo (para celular físico APK)
+  /// IP local IPv4 de la máquina de desarrollo (para pruebas locales en debug)
   static const String localServerIp = '192.168.40.23';
+
+  /// URL de producción desplegada en la nube (Render)
+  static const String productionApiUrl = 'https://backend-web-chazin-food.onrender.com/api';
 
   /// Determina la URL base de la API de forma configurable y según el entorno de ejecución
   static String get defaultBaseUrl {
     const envUrl = String.fromEnvironment('API_URL');
     if (envUrl.isNotEmpty) {
       return envUrl;
+    }
+    // En modo Release (producción / despliegue), conectar directamente al backend en Render
+    if (kReleaseMode) {
+      return productionApiUrl;
     }
     if (kIsWeb) {
       return 'http://localhost:5000/api';

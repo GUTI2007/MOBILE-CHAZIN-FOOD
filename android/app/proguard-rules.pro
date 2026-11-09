@@ -36,6 +36,14 @@
 -dontwarn javax.annotation.**
 -keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
 
+# Google Play Core (Flutter deferred components)
+-dontwarn com.google.android.play.core.**
+
+# Additional standard suppressions for R8
+-dontwarn java.lang.invoke.**
+-dontwarn java.nio.file.**
+-dontwarn org.codehaus.mojo.animal_sniffer.**
+
 # Optimize & Obfuscate
 -repackageclasses
 -allowaccessmodification
