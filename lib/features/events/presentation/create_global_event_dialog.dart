@@ -565,7 +565,7 @@ class _CreateGlobalEventDialogState
 
   Widget _buildProductSelector(bool isDark, List<Product> products) {
     return DropdownButtonFormField<String>(
-      value: _productoVinculado?.id,
+      initialValue: _productoVinculado?.id,
       hint: Text('Selecciona un producto...', style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white38 : AppColors.grey400)),
       onChanged: (id) {
         final prod = products.firstWhere((p) => p.id == id, orElse: () => products.first);
@@ -719,7 +719,11 @@ class _CreateGlobalEventDialogState
                 onTap: () => setState(() => _esTemporal = false),
                 child: Row(
                   children: [
-                    Radio(value: false, groupValue: _esTemporal, onChanged: (v) => setState(() => _esTemporal = false), activeColor: const Color(0xFFCC2222)),
+                    Icon(
+                      _esTemporal ? Icons.radio_button_off_rounded : Icons.radio_button_checked_rounded,
+                      size: 20,
+                      color: !_esTemporal ? const Color(0xFFCC2222) : (isDark ? Colors.white38 : AppColors.grey400),
+                    ),
                     Text('Vigencia Permanente / Indefinida', style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w600, color: isDark ? Colors.white60 : AppColors.grey700)),
                   ],
                 ),
@@ -921,7 +925,7 @@ class _CreateGlobalEventDialogState
   Widget _buildCategoryDropdown(bool isDark, List<ProductCategory> categories) {
     final filteredCats = categories.where((c) => c.id != 'cat_all' && c.name != '__SISTEMA_VARIANTE_CERO__').toList();
     return DropdownButtonFormField<String>(
-      value: _categoriaId.isEmpty ? null : _categoriaId,
+      initialValue: _categoriaId.isEmpty ? null : _categoriaId,
       hint: Text('Hamburguesas', style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white38 : AppColors.grey400)),
       onChanged: (id) {
         if (id == null) return;
@@ -942,7 +946,7 @@ class _CreateGlobalEventDialogState
   Widget _buildRendimientoDropdown(bool isDark) {
     final opciones = {'1 Persona (Personal)': 1, '2 Personas': 2, '3-4 Personas': 3, '5-6 Personas': 5, 'Familiar (+6)': 6};
     return DropdownButtonFormField<int>(
-      value: _rendimiento,
+      initialValue: _rendimiento,
       onChanged: (v) => setState(() => _rendimiento = v ?? 1),
       decoration: InputDecoration(
         filled: true, fillColor: isDark ? AppColors.cardDark : AppColors.grey50,
@@ -958,7 +962,7 @@ class _CreateGlobalEventDialogState
   Widget _buildEstadoDropdown(bool isDark) {
     final estados = ['Activo (Publicado de inmediato en Menú)', 'Borrador (No visible en Menú)', 'Agotado'];
     return DropdownButtonFormField<String>(
-      value: _etiquetaEstado,
+      initialValue: _etiquetaEstado,
       onChanged: (v) => setState(() => _etiquetaEstado = v ?? estados[0]),
       decoration: InputDecoration(
         filled: true, fillColor: isDark ? AppColors.cardDark : AppColors.grey50,
