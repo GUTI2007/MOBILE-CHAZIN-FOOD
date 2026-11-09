@@ -10,6 +10,7 @@ import '../../../shared/widgets/loading_shimmer.dart';
 import '../providers/products_provider.dart';
 import '../../events/providers/events_provider.dart';
 import '../../../shared/models/event_model.dart';
+import '../../events/presentation/create_global_event_dialog.dart';
 import 'product_form_screen.dart';
 import '../../../widgets/common_app_bar.dart';
 
@@ -348,7 +349,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
                           // Purple Eventos chip with badge
                           GestureDetector(
-                            onTap: () => _showEventsVersioningDialog(context, isDark),
+                            onTap: () => showCreateGlobalEventDialog(context),
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
@@ -1402,6 +1403,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
   }
 
+  // ignore: unused_element
   void _showEventsVersioningDialog(BuildContext context, bool isDark) {
     showDialog(
       context: context,

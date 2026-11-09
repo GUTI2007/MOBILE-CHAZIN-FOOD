@@ -28,12 +28,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _showKpiDash = true;
 
   static const List<String> _periodos = [
+    'Hoy',
+    '7 Días',
     'Mes Actual',
     'Mes Anterior',
     'Últimos 3 Meses',
     'Últimos 6 Meses',
     'Año Actual',
     'Año Anterior',
+    'Histórico',
+    '2026',
   ];
 
   @override

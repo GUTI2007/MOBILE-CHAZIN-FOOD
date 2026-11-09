@@ -61,20 +61,20 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   String _mapPeriodToBackend(String? periodo) {
     if (periodo == null) return 'mes_actual';
     final p = periodo.trim().toLowerCase();
-    if (p.contains('actual') && p.contains('mes')) return 'mes_actual';
-    if (p.contains('anterior') && p.contains('mes')) return 'mes_anterior';
+    // Períodos simples primero
+    if (p == 'hoy') return 'hoy';
+    if (p == '2026') return '2026';
+    if (p.contains('histor')) return 'historico';
+    // 7 días
+    if (p.contains('7') && (p.contains('d') || p.contains('sem'))) return '7_dias';
+    // Mes
     if (p.contains('3') && p.contains('mes')) return 'ultimos_3_meses';
     if (p.contains('6') && p.contains('mes')) return 'ultimos_6_meses';
-    if (p.contains('actual') &&
-        (p.contains('a') || p.contains('ano') || p.contains('año'))) {
-      return 'ano_actual';
-    }
-    if (p.contains('anterior') &&
-        (p.contains('a') || p.contains('ano') || p.contains('año'))) {
-      return 'ano_anterior';
-    }
-    if (p.contains('hoy')) return 'hoy';
-    if (p.contains('semana') || p.contains('7')) return '7_dias';
+    if (p.contains('anterior') && p.contains('mes')) return 'mes_anterior';
+    if (p.contains('mes')) return 'mes_actual';
+    // Año — verificar con 'año' o 'ano', no con 'a' genérico
+    if (p.contains('anterior') && (p.contains('año') || p.contains('ano'))) return 'ano_anterior';
+    if (p.contains('año') || p.contains('ano')) return 'ano_actual';
     return 'mes_actual';
   }
 
