@@ -151,34 +151,42 @@ class AuthRepository {
     );
   }
 
-  /// Recuperación de contraseña vía /api/usuarios/recuperar-contrasena
+  /// Recuperación de contraseña vía /api/usuarios/recuperar-contrasena (o /api/auth/recuperar-contrasena)
   Future<bool> recoverPassword(String email) async {
     final cleanEmail = email.trim().toLowerCase();
+    final customOptions = Options(
+      sendTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 20),
+    );
+
     try {
       final response = await _apiClient.post(
         '/usuarios/recuperar-contrasena',
         data: {'email': cleanEmail, 'correo': cleanEmail},
+        options: customOptions,
       );
-      return response.statusCode == 200;
-    } catch (_) {
-      try {
-        final response = await _apiClient.post(
-          '/auth/recuperar-contrasena',
-          data: {'email': cleanEmail, 'correo': cleanEmail},
-        );
-        return response.statusCode == 200;
-      } catch (_) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+    } on DioException catch (e) {
+      // Si el endpoint /usuarios no existe (404), intentar fallback a /auth/recuperar-contrasena
+      if (e.response?.statusCode == 404) {
         try {
-          final response = await _apiClient.post(
-            '/usuarios/forgot-password',
-            data: {'email': cleanEmail},
+          final fallbackResponse = await _apiClient.post(
+            '/auth/recuperar-contrasena',
+            data: {'email': cleanEmail, 'correo': cleanEmail},
+            options: customOptions,
           );
-          return response.statusCode == 200;
+          return fallbackResponse.statusCode == 200 || fallbackResponse.statusCode == 201;
         } catch (_) {
           return false;
         }
       }
+      return false;
+    } catch (_) {
+      return false;
     }
+    return false;
   }
 
   /// Restablecimiento de contraseña vía /api/usuarios/restablecer-contrasena

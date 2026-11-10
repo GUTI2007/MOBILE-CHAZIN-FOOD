@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/helpers.dart';
@@ -9,10 +8,13 @@ import '../../../shared/models/product_model.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
 import '../providers/products_provider.dart';
 import '../../events/providers/events_provider.dart';
+import '../../sales/providers/dashboard_provider.dart';
+import '../../sales/providers/orders_provider.dart';
 import '../../../shared/models/event_model.dart';
 import '../../events/presentation/create_global_event_dialog.dart';
 import 'product_form_screen.dart';
 import '../../../widgets/common_app_bar.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 /// Model for product events (insumo, promo, descuento)
 class ProductEvent {
@@ -119,11 +121,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(productsProvider.notifier).loadProducts();
-      // Cargar eventos del backend dinámicamente
       ref.read(eventsProvider.notifier).loadEvents();
+      ref.read(ordersProvider.notifier).loadOrders();
+      ref.read(dashboardProvider.notifier).loadDashboardData();
     });
     _scrollController.addListener(_onScroll);
-    // _customEvents se sincroniza con eventsProvider en build()
     _customEvents = [];
   }
 
@@ -469,7 +471,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               physics: const NeverScrollableScrollPhysics(),
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: visibleItems.length,
-                              separatorBuilder: (_, _) => const SizedBox(height: 16),
+                              separatorBuilder: (_, i) => const SizedBox(height: 16),
                               itemBuilder: (context, index) {
                                 final product = visibleItems[index];
                                 return AnimationConfiguration.staggeredList(
@@ -576,11 +578,50 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   Widget _buildStatsGrid(dynamic state, bool isDark) {
     final products = state.filteredProducts as List<Product>;
     final totalProducts = products.length;
-    final totalSold = products.fold<int>(0, (sum, p) => sum + p.totalSold);
-    final lowStock = products.where((p) => p.name == 'Muslito de Pollo').length;
-    final bestSeller = products.isNotEmpty
-        ? products.reduce((a, b) => a.totalSold > b.totalSold ? a : b)
-        : null;
+
+    // Conexión dinámica con backend / TiDB para analítica de ventas y producto más vendido
+    final ordersState = ref.watch(ordersProvider);
+    final dashboardState = ref.watch(dashboardProvider);
+
+    String bestSellerName = '-';
+    int bestSellerUnits = 0;
+    int totalUnitsSold = 0;
+
+    // 1. Agregar unidades vendidas por producto desde el histórico real de órdenes
+    final Map<String, int> productSalesMap = {};
+    for (final order in ordersState.orders) {
+      for (final det in order.detalle) {
+        final name = det.nombre.trim();
+        if (name.isNotEmpty) {
+          productSalesMap[name] = (productSalesMap[name] ?? 0) + det.cantidad;
+          totalUnitsSold += det.cantidad;
+        }
+      }
+    }
+
+    if (productSalesMap.isNotEmpty) {
+      final sorted = productSalesMap.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      bestSellerName = sorted.first.key;
+      bestSellerUnits = sorted.first.value;
+    } else if (dashboardState.productosPopulares.isNotEmpty) {
+      // 2. Fallback al endpoint de productos populares del Dashboard
+      final topPopular = dashboardState.productosPopulares.first;
+      bestSellerName = topPopular.nombre;
+      bestSellerUnits = topPopular.ventas;
+      totalUnitsSold = dashboardState.productosPopulares.fold<int>(0, (sum, p) => sum + p.ventas);
+    } else if (products.isNotEmpty) {
+      // 3. Fallback al producto con mayor totalSold local
+      final localBest = products.reduce((a, b) => a.totalSold > b.totalSold ? a : b);
+      if (localBest.totalSold > 0) {
+        bestSellerName = localBest.name;
+        bestSellerUnits = localBest.totalSold;
+        totalUnitsSold = products.fold<int>(0, (sum, p) => sum + p.totalSold);
+      }
+    }
+
+    // Alertas de stock crítico dinámicas (< 10 unidades) desde el inventario del backend
+    final lowStockCount = dashboardState.alertasStock.where((a) => a.stock < 10).length;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -606,8 +647,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   iconColor: const Color(0xFF4CAF50),
                   iconBg: isDark ? const Color(0xFF1B3B22) : const Color(0xFFE8F5E9),
                   label: 'Más Vendido',
-                  value: bestSeller?.name ?? '-',
-                  subtitle: '${bestSeller?.totalSold ?? 0} ventas',
+                  value: bestSellerName,
+                  subtitle: bestSellerUnits > 0
+                      ? '$bestSellerUnits ${bestSellerUnits == 1 ? 'unidad' : 'unidades'}'
+                      : '0 ventas',
                   isSmallValue: true,
                   isDark: isDark,
                 ),
@@ -623,7 +666,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   iconColor: const Color(0xFF4CAF50),
                   iconBg: isDark ? const Color(0xFF1B3B22) : const Color(0xFFE8F5E9),
                   label: 'Total Vendidos',
-                  value: totalSold.toString(),
+                  value: totalUnitsSold.toString(),
                   subtitle: 'unidades',
                   isDark: isDark,
                 ),
@@ -635,7 +678,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   iconColor: const Color(0xFFE53935),
                   iconBg: isDark ? const Color(0xFF3E1F21) : const Color(0xFFFFEBEE),
                   label: 'Bajo Stock',
-                  value: lowStock.toString(),
+                  value: lowStockCount.toString(),
                   subtitle: 'requieren atención',
                   isDark: isDark,
                 ),
@@ -1559,44 +1602,162 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: isActive ? const Color(0xFFFFCB8E) : (isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: isActive ? const Color(0xFFFFF3E0) : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)), borderRadius: BorderRadius.circular(10)),
-            child: Icon(isActive ? Icons.local_fire_department_rounded : Icons.history_rounded, color: isActive ? const Color(0xFFE65100) : AppColors.grey400, size: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(color: isActive ? const Color(0xFFFFF3E0) : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)), borderRadius: BorderRadius.circular(10)),
+                child: Icon(isActive ? Icons.local_fire_department_rounded : Icons.history_rounded, color: isActive ? const Color(0xFFE65100) : AppColors.grey400, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nombre, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: isDark ? Colors.white : AppColors.textPrimaryLight)),
+                    if (subtitulo.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(subtitulo, style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white54 : AppColors.textSecondaryLight)),
+                    ],
+                    if (fechaInicio != null || fechaFin != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${fechaInicio != null ? DateTime.tryParse(fechaInicio)?.day.toString().padLeft(2,'0') ?? '' : ''}/${fechaInicio != null ? DateTime.tryParse(fechaInicio)?.month.toString().padLeft(2,'0') ?? '' : ''} → ${fechaFin != null ? DateTime.tryParse(fechaFin)?.day.toString().padLeft(2,'0') ?? '' : ''}/${fechaFin != null ? DateTime.tryParse(fechaFin)?.month.toString().padLeft(2,'0') ?? '' : ''}',
+                        style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : AppColors.grey400),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isActive ? const Color(0xFFD1FAE5) : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  isActive ? 'Activo' : 'Inactivo',
+                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: isActive ? const Color(0xFF065F46) : AppColors.grey500),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(nombre, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: isDark ? Colors.white : AppColors.textPrimaryLight)),
-                if (subtitulo.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(subtitulo, style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white54 : AppColors.textSecondaryLight)),
-                ],
-                if (fechaInicio != null || fechaFin != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '${fechaInicio != null ? DateTime.tryParse(fechaInicio)?.day.toString().padLeft(2,'0') ?? '' : ''}/${fechaInicio != null ? DateTime.tryParse(fechaInicio)?.month.toString().padLeft(2,'0') ?? '' : ''} → ${fechaFin != null ? DateTime.tryParse(fechaFin)?.day.toString().padLeft(2,'0') ?? '' : ''}/${fechaFin != null ? DateTime.tryParse(fechaFin)?.month.toString().padLeft(2,'0') ?? '' : ''}',
-                    style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : AppColors.grey400),
+          // ─── Action buttons ───
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Inactivar / Activar
+              GestureDetector(
+                onTap: () async {
+                  final event = evt as Event;
+                  final ok = await ref.read(eventsProvider.notifier).toggleEventStatus(event);
+                  if (!ok && ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text('Error al cambiar estado de "${event.nombre}"')),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? (isDark ? Colors.orange.withAlpha(40) : const Color(0xFFFFF3E0))
+                        : (isDark ? Colors.green.withAlpha(40) : const Color(0xFFD1FAE5)),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isActive ? const Color(0xFFFFB74D) : const Color(0xFF34D399),
+                    ),
                   ),
-                ],
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFD1FAE5) : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              isActive ? 'Activo' : 'Inactivo',
-              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: isActive ? const Color(0xFF065F46) : AppColors.grey500),
-            ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isActive ? Icons.pause_circle_outline_rounded : Icons.play_circle_outline_rounded,
+                        size: 12,
+                        color: isActive ? const Color(0xFFE65100) : const Color(0xFF065F46),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isActive ? 'Inactivar' : 'Activar',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isActive ? const Color(0xFFE65100) : const Color(0xFF065F46),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Eliminar
+              GestureDetector(
+                onTap: () async {
+                  final event = evt as Event;
+                  final confirmed = await showDialog<bool>(
+                    context: ctx,
+                    builder: (dialogCtx) => AlertDialog(
+                      backgroundColor: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      title: Text(
+                        '¿Eliminar evento?',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimaryLight),
+                      ),
+                      content: Text(
+                        'Se eliminará permanentemente "${event.nombre}". Esta acción no se puede deshacer.',
+                        style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondaryLight),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx, false),
+                          child: Text('Cancelar', style: GoogleFonts.inter(color: AppColors.grey500)),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(dialogCtx, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.error,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: Text('Eliminar', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true && event.id != null) {
+                    final ok = await ref.read(eventsProvider.notifier).deleteEvent(event.id!);
+                    if (!ok && ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text('Error al eliminar "${event.nombre}"')),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.red.withAlpha(40) : const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFFCA5A5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.delete_outline_rounded, size: 12, color: Color(0xFFDC2626)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Eliminar',
+                        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFFDC2626)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -3401,46 +3562,6 @@ class _FigmaProductCard extends StatelessWidget {
               ),
             ),
           ),
-
-  // ─── "Crear Evento" button ───
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: GestureDetector(
-              onTap: onCreateEvent,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF8E1),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF5D4037) : const Color(0xFFFFE0B2),
-                    width: 1,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.bolt_rounded,
-                      size: 16,
-                      color: isDark ? const Color(0xFFFFCC80) : const Color(0xFFEF6C00),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Crear Evento',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFFFFCC80) : const Color(0xFFEF6C00),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
 
           // ─── Actions Row ───
           Padding(

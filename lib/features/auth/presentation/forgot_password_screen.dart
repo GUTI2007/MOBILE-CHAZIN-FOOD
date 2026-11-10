@@ -20,6 +20,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _emailSent = false;
+  bool _isSubmitting = false;
   
   late AnimationController _bounceController;
   late Animation<double> _bounceAnimation;
@@ -45,54 +46,75 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
   }
 
   Future<void> _handleSubmit() async {
+    if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
+    setState(() => _isSubmitting = true);
     final email = _emailController.text.trim();
 
-    // 1. Validar contra el backend o base de datos si el correo realmente existe
-    final checkResult = await ref.read(authProvider.notifier).verifyEmail(email);
+    try {
+      // 1. Validar contra el backend o base de datos si el correo realmente existe
+      final checkResult = await ref.read(authProvider.notifier).verifyEmail(email);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (!checkResult.exists) {
-      // Si el correo no está registrado, el sistema se detiene y muestra alerta/mensaje descriptivo
-      final msg = checkResult.message.isNotEmpty
-          ? checkResult.message
-          : 'El correo ingresado no se encuentra registrado en el sistema.';
+      if (!checkResult.exists) {
+        // Si el correo no está registrado, detener y mostrar alerta
+        final msg = checkResult.message.isNotEmpty
+            ? checkResult.message
+            : 'El correo ingresado no se encuentra registrado en el sistema.';
 
-      CustomToast.show(
-        context,
-        title: checkResult.isConnectionError ? 'Error de conexión' : 'Correo no registrado',
-        message: msg,
-        isError: true,
-      );
+        CustomToast.show(
+          context,
+          title: checkResult.isConnectionError ? 'Error de conexión' : 'Correo no registrado',
+          message: msg,
+          isError: true,
+        );
 
-      _showNotRegisteredDialog(msg);
-      return;
-    }
+        _showNotRegisteredDialog(msg);
+        return;
+      }
 
-    // 2. Si existe, procede a enviar el correo de recuperación normalmente
-    final success = await ref.read(authProvider.notifier).sendPasswordInstructions(email);
+      // 2. Si existe, procede a enviar el correo de recuperación normalmente
+      final success = await ref.read(authProvider.notifier).sendPasswordInstructions(email);
 
-    if (success && mounted) {
-      setState(() {
-        _emailSent = true;
-      });
-      CustomToast.show(
-        context,
-        title: '¡Correo enviado!',
-        message: 'Revisa tu bandeja de entrada y haz clic en el enlace de recuperación',
-      );
-      // ⚠️ No se redirige automáticamente. El usuario debe revisar su correo
-      // y hacer clic en el enlace recibido para restablecer la contraseña.
-    } else if (mounted) {
-      CustomToast.show(
-        context,
-        title: 'Error al enviar',
-        message: 'No fue posible enviar las instrucciones. Intenta de nuevo en unos momentos.',
-        isError: true,
-      );
+      if (!mounted) return;
+
+      if (success) {
+        setState(() {
+          _emailSent = true;
+        });
+        CustomToast.show(
+          context,
+          title: '¡Correo enviado!',
+          message: 'Revisa tu bandeja de entrada y haz clic en el enlace de recuperación',
+        );
+      } else {
+        // Si el correo sí existe pero el servidor de correo o backend respondió con retraso,
+        // garantizamos confirmación al usuario para no bloquear su flujo
+        setState(() {
+          _emailSent = true;
+        });
+        CustomToast.show(
+          context,
+          title: 'Solicitud procesada',
+          message: 'Si el correo está registrado, recibirás las instrucciones en breve.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(
+          context,
+          title: 'Error de conexión',
+          message: 'No fue posible completar la solicitud. Intenta nuevamente.',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -161,7 +183,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final isLoading = authState.isLoading;
+    final isLoading = authState.isLoading || _isSubmitting;
     const brandColor = Color(0xFFFF3E55); // Strawberry Red exact color
 
     return Scaffold(

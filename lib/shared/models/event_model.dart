@@ -97,6 +97,45 @@ class Event {
     );
   }
 
+  /// Returns a copy of this [Event] with the given fields replaced.
+  Event copyWith({
+    int? id,
+    String? nombre,
+    String? descripcion,
+    String? fechaInicio,
+    String? fechaFin,
+    bool? isActive,
+    String? estado,
+    int? idProducto,
+    String? tipoEvento,
+    double? descuento,
+    double? nuevoPrecio,
+    String? accionInsumo,
+    List<dynamic>? insumosAsociados,
+    List<dynamic>? productosAsociados,
+    String? icono,
+    bool? isTemporal,
+  }) {
+    return Event(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      descripcion: descripcion ?? this.descripcion,
+      fechaInicio: fechaInicio ?? this.fechaInicio,
+      fechaFin: fechaFin ?? this.fechaFin,
+      isActive: isActive ?? this.isActive,
+      estado: estado ?? this.estado,
+      idProducto: idProducto ?? this.idProducto,
+      tipoEvento: tipoEvento ?? this.tipoEvento,
+      descuento: descuento ?? this.descuento,
+      nuevoPrecio: nuevoPrecio ?? this.nuevoPrecio,
+      accionInsumo: accionInsumo ?? this.accionInsumo,
+      insumosAsociados: insumosAsociados ?? this.insumosAsociados,
+      productosAsociados: productosAsociados ?? this.productosAsociados,
+      icono: icono ?? this.icono,
+      isTemporal: isTemporal ?? this.isTemporal,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'idEvento': id,

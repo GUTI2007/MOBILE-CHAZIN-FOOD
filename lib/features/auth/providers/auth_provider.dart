@@ -57,10 +57,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return true;
     } else {
-      state = state.copyWith(
-        isLoading: false,
-        error: result.errorMessage,
-      );
+      state = state.copyWith(isLoading: false, error: result.errorMessage);
       return false;
     }
   }
@@ -75,19 +72,41 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<EmailCheckResult> verifyEmail(String email) async {
     state = state.copyWith(isLoading: true, error: null);
-    final result = await _repository.verifyEmail(email);
-    state = state.copyWith(
-      isLoading: false,
-      error: result.exists ? null : result.message,
-    );
-    return result;
+    try {
+      final result = await _repository.verifyEmail(email);
+      state = state.copyWith(
+        isLoading: false,
+        error: result.exists ? null : result.message,
+      );
+      return result;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return EmailCheckResult(
+        exists: false,
+        isConnectionError: true,
+        message: 'Error al verificar correo: $e',
+      );
+    } finally {
+      if (state.isLoading) {
+        state = state.copyWith(isLoading: false);
+      }
+    }
   }
 
   Future<bool> sendPasswordInstructions(String email) async {
     state = state.copyWith(isLoading: true, error: null);
-    final exists = await _repository.recoverPassword(email);
-    state = state.copyWith(isLoading: false);
-    return exists;
+    try {
+      final success = await _repository.recoverPassword(email);
+      state = state.copyWith(isLoading: false);
+      return success;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    } finally {
+      if (state.isLoading) {
+        state = state.copyWith(isLoading: false);
+      }
+    }
   }
 
   Future<bool> resetPassword(String email, String newPassword) async {

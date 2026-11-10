@@ -64,6 +64,25 @@ class EventsNotifier extends StateNotifier<EventsState> {
     }
   }
 
+  Future<bool> toggleEventStatus(Event event) async {
+    if (event.id == null) return false;
+    final newActive = !event.isActive;
+    final updatedEvent = event.copyWith(
+      isActive: newActive,
+      estado: newActive ? 'Activo' : 'Inactivo',
+    );
+    try {
+      final updated = await _repository.updateEvent(event.id!, updatedEvent);
+      state = state.copyWith(
+        events: state.events.map((e) => e.id == event.id ? updated : e).toList(),
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return false;
+    }
+  }
+
   Future<bool> deleteEvent(int id) async {
     try {
       final ok = await _repository.deleteEvent(id);
