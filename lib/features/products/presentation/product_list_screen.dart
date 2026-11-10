@@ -119,29 +119,12 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(productsProvider.notifier).loadProducts();
+      // Cargar eventos del backend dinámicamente
+      ref.read(eventsProvider.notifier).loadEvents();
     });
     _scrollController.addListener(_onScroll);
-    // Default mock event matching screenshots
-    _customEvents = [
-      ProductEvent(
-        id: 'evt_1',
-        productId: 'prod_1',
-        productName: 'Hamburguesa Especial',
-        productEmoji: '🍔',
-        type: 'insumo_temp',
-        title: 'baller burger',
-        description: 'compren sog!',
-        action: 'agregar',
-        insumoName: 'carne extra aros de cebolla empanizados',
-        quantity: '4',
-        unit: 'kg',
-        isTemporal: true,
-        startDate: DateTime(2026, 6, 30),
-        endDate: DateTime(2026, 7, 2),
-        createdAt: DateTime(2026, 7, 1),
-        isActive: true,
-      ),
-    ];
+    // _customEvents se sincroniza con eventsProvider en build()
+    _customEvents = [];
   }
 
   void _onScroll() {
@@ -160,6 +143,24 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     final state = ref.watch(productsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final filtered = state.filteredProducts;
+
+    // Sincronizar _customEvents con la data real del backend vía eventsProvider
+    final eventsState = ref.watch(eventsProvider);
+    _customEvents = eventsState.events.map((e) => ProductEvent(
+      id: e.id?.toString() ?? '',
+      productId: e.idProducto?.toString() ?? '',
+      productName: e.nombre,
+      productEmoji: '🎉',
+      type: e.tipoEvento ?? 'promo_precio',
+      title: e.nombre,
+      description: e.descripcion,
+      promoPrice: e.nuevoPrecio,
+      discountPercentage: e.descuento,
+      isTemporal: e.isTemporal,
+      startDate: e.fechaInicio != null ? DateTime.tryParse(e.fechaInicio!) : null,
+      endDate: e.fechaFin != null ? DateTime.tryParse(e.fechaFin!) : null,
+      isActive: e.isActive,
+    )).toList();
 
     return Scaffold(
       appBar: CommonAppBar(
@@ -1408,17 +1409,19 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     showDialog(
       context: context,
       builder: (ctx) {
-        int activeTab = 0; // 0 for active events, 1 for history
+        int activeTab = 0; // 0 = Activos, 1 = Inactivos
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final activeEvents = _customEvents.where((e) => e.isActive).toList();
-            final allEvents = _customEvents;
+          builder: (ctx2, setDialogState) {
+            // Consumir eventos en tiempo real del eventsProvider (backend/TiDB)
+            final eventsState = ref.read(eventsProvider);
+            final allEvents = eventsState.events;
+            final activos = allEvents.where((e) => e.isActive).toList();
+            final inactivos = allEvents.where((e) => !e.isActive).toList();
+            final displayList = activeTab == 0 ? activos : inactivos;
 
             return Dialog(
               backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               clipBehavior: Clip.antiAlias,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 450),
@@ -1426,149 +1429,95 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Title Header Row
+                    // ─── Header ───
                     Padding(
                       padding: const EdgeInsets.all(20),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Purple sparkles circular icon
                           Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF3E0),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.auto_awesome,
-                              color: Color(0xFFE65100),
-                              size: 20,
-                            ),
+                            width: 44, height: 44,
+                            decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(12)),
+                            child: const Icon(Icons.auto_awesome, color: Color(0xFFE65100), size: 20),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Versionamiento de Fichas\nTécnicas',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                                    height: 1.2,
-                                  ),
-                                ),
+                                Text('Eventos & Promociones', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimaryLight, height: 1.2)),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${_customEvents.length} eventos registrados',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: isDark ? Colors.white54 : AppColors.textSecondaryLight,
-                                  ),
+                                  eventsState.isLoading ? 'Cargando...' : '${allEvents.length} evento${allEvents.length == 1 ? '' : 's'} registrado${allEvents.length == 1 ? '' : 's'}',
+                                  style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white54 : AppColors.textSecondaryLight),
                                 ),
                               ],
                             ),
                           ),
-                          // Close button
                           GestureDetector(
                             onTap: () => Navigator.pop(ctx),
-                            child: Icon(
-                              Icons.close_rounded,
-                              color: isDark ? Colors.white54 : AppColors.grey500,
-                              size: 20,
-                            ),
+                            child: Icon(Icons.close_rounded, color: isDark ? Colors.white54 : AppColors.grey500, size: 20),
                           ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Colors.transparent), // Space before tabs
 
-                    // Tab Segmented Bar
+                    // ─── Tabs Activos / Inactivos ───
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         children: [
-                          _buildTabBtn(
-                            label: 'Eventos Activos',
-                            isSelected: activeTab == 0,
-                            onTap: () => setDialogState(() => activeTab = 0),
-                            isDark: isDark,
-                            badgeCount: activeEvents.length,
-                          ),
+                          _buildTabBtn(label: 'Activos', isSelected: activeTab == 0, onTap: () => setDialogState(() => activeTab = 0), isDark: isDark, badgeCount: activos.length),
                           const SizedBox(width: 12),
-                          _buildTabBtn(
-                            label: 'Historial Completo',
-                            isSelected: activeTab == 1,
-                            onTap: () => setDialogState(() => activeTab = 1),
-                            isDark: isDark,
-                            badgeCount: allEvents.length,
-                          ),
+                          _buildTabBtn(label: 'Inactivos', isSelected: activeTab == 1, onTap: () => setDialogState(() => activeTab = 1), isDark: isDark, badgeCount: inactivos.length),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Tab Content Area
-                    Flexible(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 350),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: activeTab == 0
-                              ? (activeEvents.isEmpty
-                                  ? _buildEmptyState(
-                                      icon: Icons.flash_on_rounded,
-                                      title: 'No hay eventos activos actualmente.',
-                                      subtitle: 'Crea un evento desde cualquier producto.',
-                                      isDark: isDark,
-                                    )
-                                  : Column(
-                                      children: activeEvents
-                                          .map((evt) => _buildEventCard(evt, isDark, setDialogState))
-                                          .toList(),
-                                    ))
-                              : (allEvents.isEmpty
-                                  ? _buildEmptyState(
-                                      icon: Icons.calendar_today_rounded,
-                                      title: 'No hay eventos registrados.',
-                                      subtitle: '',
-                                      isDark: isDark,
-                                    )
-                                  : Column(
-                                      children: allEvents
-                                          .map((evt) => _buildEventCard(evt, isDark, setDialogState))
-                                          .toList(),
-                                    )),
-                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    // Cerrar button footer
+                    // ─── Content ───
+                    Flexible(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 380),
+                        child: eventsState.isLoading
+                            ? const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+                            : displayList.isEmpty
+                                ? _buildEmptyState(
+                                    icon: activeTab == 0 ? Icons.flash_on_rounded : Icons.history_rounded,
+                                    title: activeTab == 0 ? 'No hay eventos activos.' : 'No hay eventos inactivos.',
+                                    subtitle: activeTab == 0 ? 'Crea uno con el botón ✦ Crear Evento Global.' : '',
+                                    isDark: isDark,
+                                  )
+                                : SingleChildScrollView(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    child: Column(
+                                      children: displayList.map((evt) => _buildEventCardFromEvent(evt, isDark, ctx)).toList(),
+                                    ),
+                                  ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ─── Footer ───
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: TextButton.styleFrom(
-                            backgroundColor: isDark ? Colors.white10 : AppColors.grey100,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              showCreateGlobalEventDialog(context);
+                            },
+                            icon: const Icon(Icons.add_circle_outline_rounded, size: 16, color: Color(0xFFE65100)),
+                            label: Text('Nuevo Evento', style: GoogleFonts.inter(color: const Color(0xFFE65100), fontWeight: FontWeight.w700, fontSize: 13)),
                           ),
-                          child: Text(
-                            'Cerrar',
-                            style: GoogleFonts.inter(
-                              color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: TextButton.styleFrom(backgroundColor: isDark ? Colors.white10 : AppColors.grey100, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
+                            child: Text('Cerrar', style: GoogleFonts.inter(color: isDark ? Colors.white : AppColors.textPrimaryLight, fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ],
@@ -1578,6 +1527,72 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
           },
         );
       },
+    );
+  }
+
+  /// Tarjeta de evento construida desde el modelo [Event] del backend
+  Widget _buildEventCardFromEvent(dynamic evt, bool isDark, BuildContext ctx) {
+    final isActive = evt.isActive as bool;
+    final nombre = evt.nombre?.toString() ?? 'Evento';
+    final tipo = evt.tipoEvento?.toString() ?? '';
+    final fechaInicio = evt.fechaInicio?.toString();
+    final fechaFin = evt.fechaFin?.toString();
+    final descuento = evt.descuento;
+    final nuevoPrecio = evt.nuevoPrecio;
+
+    String subtitulo = tipo.isNotEmpty ? tipo.replaceAll('_', ' ').toUpperCase() : '';
+    if (nuevoPrecio != null) subtitulo += ' • \$${nuevoPrecio.toStringAsFixed(0)} COP';
+    if (descuento != null && descuento > 0) subtitulo += ' • ${descuento.toStringAsFixed(0)}% desc.';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withAlpha(8) : (isActive ? const Color(0xFFFFF8F0) : const Color(0xFFF8FAFC)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isActive ? const Color(0xFFFFCB8E) : (isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: isActive ? const Color(0xFFFFF3E0) : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)), borderRadius: BorderRadius.circular(10)),
+            child: Icon(isActive ? Icons.local_fire_department_rounded : Icons.history_rounded, color: isActive ? const Color(0xFFE65100) : AppColors.grey400, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(nombre, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: isDark ? Colors.white : AppColors.textPrimaryLight)),
+                if (subtitulo.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitulo, style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white54 : AppColors.textSecondaryLight)),
+                ],
+                if (fechaInicio != null || fechaFin != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${fechaInicio != null ? DateTime.tryParse(fechaInicio)?.day.toString().padLeft(2,'0') ?? '' : ''}/${fechaInicio != null ? DateTime.tryParse(fechaInicio)?.month.toString().padLeft(2,'0') ?? '' : ''} → ${fechaFin != null ? DateTime.tryParse(fechaFin)?.day.toString().padLeft(2,'0') ?? '' : ''}/${fechaFin != null ? DateTime.tryParse(fechaFin)?.month.toString().padLeft(2,'0') ?? '' : ''}',
+                    style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : AppColors.grey400),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isActive ? const Color(0xFFD1FAE5) : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              isActive ? 'Activo' : 'Inactivo',
+              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: isActive ? const Color(0xFF065F46) : AppColors.grey500),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1689,6 +1704,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildEventCard(ProductEvent evt, bool isDark, StateSetter setDialogState) {
     final months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     final dateStr = "${evt.createdAt.day.toString().padLeft(2, '0')} de ${months[evt.createdAt.month - 1]} de ${evt.createdAt.year}";

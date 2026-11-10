@@ -51,17 +51,7 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
     try {
       final sales = await _repository.getSales();
 
-      if (sales.isEmpty) {
-        // Si la API no retorna datos, usar mock
-        state = state.copyWith(
-          orders: pedidosMock,
-          isLoading: false,
-          usingMock: true,
-        );
-        return;
-      }
-
-      // Mapear Sale → Order
+      // Mapear Sale → Order (si la API retorna lista vacía, se muestra vacío — sin mocks)
       final orders = sales.map((sale) {
         final detalles = sale.details.map((d) {
           return DetallePedido(
@@ -133,12 +123,12 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
         usingMock: false,
       );
     } catch (e) {
-      // Fallback a datos mock si la API falla (sin Internet, dev offline, etc.)
+      // Error de red o servidor — mostrar lista vacía con mensaje de error (sin mocks)
       state = state.copyWith(
-        orders: pedidosMock,
+        orders: const [],
         isLoading: false,
         error: e.toString(),
-        usingMock: true,
+        usingMock: false,
       );
     }
   }

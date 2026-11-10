@@ -211,9 +211,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               icon: Icons.inventory_2_outlined,
                               iconColor: const Color(0xFFEF4444),
                               iconBg: const Color(0xFFFEE2E2),
-                              label: 'Productos',
-                              value: '${stats.productosTotal}',
-                              trendText: '${stats.insumosBajoStock} bajo stock',
+                              label: 'Stock Crítico',
+                              value: '${dashboardState.alertasStock.where((a) => a.stock < 10).length}',
+                              trendText: 'Insumos < 10 uds',
                               trendColor: const Color(0xFFEF4444),
                               isDark: isDark,
                             ),
@@ -236,8 +236,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     _buildAlertasDeStock(isDark, dashboardState.alertasStock),
                     const SizedBox(height: 24),
 
-                    // ─── Ventas Recientes ───
-                    _buildVentasRecientes(isDark),
+                    // ─── Ventas Pendientes ───
+                    _buildVentasPendientes(isDark),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -829,17 +829,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // Stock alerts with exact button actions
+  // Stock alerts — solo insumos con stock < 10 unidades (regla estricta de stock crítico)
   Widget _buildAlertasDeStock(bool isDark, List<StockAlertItem> stockAlerts) {
-    final alerts = stockAlerts.isNotEmpty
-        ? stockAlerts.map((a) => {'name': a.nombre, 'qty': a.formattedQty}).toList()
-        : [
-            {'name': 'Pan de Hamburguesa', 'qty': '15 / 50 unidades'},
-            {'name': 'Salchicha Premium', 'qty': '8 / 30 unidades'},
-            {'name': 'Papas Congeladas', 'qty': '12 / 40 unidades'},
-            {'name': 'Queso Mozzarella', 'qty': '6 / 20 unidades'},
-            {'name': 'Tomate', 'qty': '9 / 25 unidades'},
-          ];
+    // Filtrar: solo los que tengan stock estrictamente menor a 10
+    final criticos = stockAlerts.where((a) => a.stock < 10).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -864,100 +857,119 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Alertas de Stock',
+                'Stock Crítico (< 10 unidades)',
                 style: GoogleFonts.outfit(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: criticos.isEmpty ? (isDark ? Colors.white10 : const Color(0xFFF0FDF4)) : (isDark ? const Color(0xFF3E1F21) : const Color(0xFFFEF2F2)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${criticos.length} alertas',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: criticos.isEmpty ? (isDark ? Colors.white38 : const Color(0xFF16A34A)) : const Color(0xFFEF4444),
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          Column(
-            children: alerts.map((a) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF3E1F21) : const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDark ? const Color(0xFF5A2A2D) : const Color(0xFFFEE2E2)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            a['name']!,
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF7F1D1D),
+          if (criticos.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Inventario al día — sin alertas críticas',
+                    style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white60 : const Color(0xFF166534)),
+                  ),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: criticos.map((a) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF3E1F21) : const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isDark ? const Color(0xFF5A2A2D) : const Color(0xFFFEE2E2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              a.nombre,
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF7F1D1D),
+                              ),
                             ),
-                          ),
-                          Text(
-                            a['qty']!,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: isDark ? const Color(0xFFF87171) : const Color(0xFF991B1B),
+                            Text(
+                              '${a.stock} uds disponibles (mín. ${a.minimo})',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: isDark ? const Color(0xFFF87171) : const Color(0xFF991B1B),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF5A2A2D) : const Color(0xFFFFE4E6),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA),
+                          ],
                         ),
                       ),
-                      child: Text(
-                        'Bajo stock',
-                        style: GoogleFonts.inter(
-                          color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF5A2A2D) : const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA),
+                          ),
+                        ),
+                        child: Text(
+                          '⚠ Crítico',
+                          style: GoogleFonts.inter(
+                            color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
   }
 
-  // Recent Sales Widget
-  Widget _buildVentasRecientes(bool isDark) {
+  // Ventas Pendientes — solo las órdenes con estado 'pendiente' del backend, con hora exacta
+  Widget _buildVentasPendientes(bool isDark) {
     final ordersState = ref.watch(ordersProvider);
-    final List<Map<String, dynamic>> recentSales = ordersState.orders.isNotEmpty
-        ? ordersState.orders.take(4).map((o) {
-            final isCompleted = o.estado == 'pagado';
-            return {
-              'id': o.id,
-              'status': isCompleted ? 'Completado' : 'Pendiente',
-              'client': o.cliente,
-              'time': o.hora,
-              'val': o.total,
-              'color': isCompleted ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7),
-              'txtColor': isCompleted ? const Color(0xFF065F46) : const Color(0xFF92400E),
-            };
-          }).toList()
-        : [
-            {'id': '#0042', 'status': 'Completado', 'client': 'Juan Pérez', 'time': '10:30 AM', 'val': 45000.0, 'color': const Color(0xFFD1FAE5), 'txtColor': const Color(0xFF065F46)},
-            {'id': '#0041', 'status': 'En proceso', 'client': 'María García', 'time': '10:15 AM', 'val': 32500.0, 'color': const Color(0xFFFEF3C7), 'txtColor': const Color(0xFF92400E)},
-          ];
+
+    // Filtrar SOLO las órdenes con estado pendiente, ordenadas por hora desc
+    final pendientes = ordersState.orders
+        .where((o) => o.estado == 'pendiente')
+        .take(5)
+        .toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -982,7 +994,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Ventas Recientes',
+                'Ventas Pendientes',
                 style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -991,7 +1003,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               GestureDetector(
                 onTap: () {
-                  ref.read(appShellIndexProvider.notifier).state = 2; // Ventas index
+                  ref.read(appShellIndexProvider.notifier).state = 2;
                 },
                 child: Text(
                   'Ver todo ›',
@@ -1005,73 +1017,97 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          Column(
-            children: recentSales.map((s) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withAlpha(5) : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: isDark ? null : Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              s['id'] as String,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                                color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: s['color'] as Color,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                s['status'] as String,
-                                style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: s['txtColor'] as Color,
+          if (ordersState.isLoading)
+            const Center(child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: CircularProgressIndicator(),
+            ))
+          else if (pendientes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Sin ventas pendientes en este momento',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: isDark ? Colors.white60 : const Color(0xFF166534),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: pendientes.map((o) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withAlpha(5) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: isDark ? null : Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                o.id,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${s['client']} • ${s['time']}',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: Colors.grey,
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF3C7),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Pendiente',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF92400E),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Text(
-                      Formatters.currency((s['val'] as num).toDouble()),
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                          const SizedBox(height: 4),
+                          Text(
+                            // hora exacta del timestamp del backend (HH:mm)
+                            '${o.cliente} • ${o.hora}',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
+                      const Spacer(),
+                      Text(
+                        Formatters.currency(o.total),
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
