@@ -30,6 +30,13 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Forzar recarga de ventas desde backend al abrir la pantalla
+    // (evita race condition de token aún no cargado en el constructor del provider)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(ordersProvider.notifier).refresh();
+      }
+    });
   }
 
   @override

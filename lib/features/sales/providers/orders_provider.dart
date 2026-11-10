@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/order.dart';
 import '../data/sales_repository.dart';
 import '../../../config/api/api_client.dart';
+import '../../../shared/models/sale_model.dart';
 
 /// Provider del repositorio de ventas
 final salesRepositoryProvider = Provider<SalesRepository>((ref) {
@@ -91,8 +92,28 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
             ? '${sale.endAt!.hour.toString().padLeft(2, '0')}:${sale.endAt!.minute.toString().padLeft(2, '0')}'
             : hora;
 
-        final num = sale.id.replaceAll(RegExp(r'[^0-9]'), '');
-        final displayId = 'PED-${num.padLeft(3, '0')}';
+        // Map Sale status → Order.estado (match backend string values)
+        String estado;
+        switch (sale.status) {
+          case SaleStatus.pending:
+            estado = 'pendiente';
+            break;
+          case SaleStatus.cancelled:
+            estado = 'cancelado';
+            break;
+          case SaleStatus.completed:
+            // 'Completada', 'Listo', 'En Preparación', 'Pagado', etc.
+            estado = sale.statusName.toLowerCase();
+        }
+
+        // Use the backend's display ID directly (VEN-XXXX format) if available
+        final rawId = sale.id;
+        final displayId = rawId.startsWith('VEN-') || rawId.startsWith('PED-')
+            ? rawId
+            : () {
+                final num = rawId.replaceAll(RegExp(r'[^0-9]'), '');
+                return 'VEN-${num.padLeft(4, '0')}';
+              }();
 
         return Order(
           id: displayId,
@@ -100,7 +121,7 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
           fecha: sale.formattedDate,
           hora: hora,
           horaFin: horaFin,
-          estado: sale.statusName == 'Pagado' ? 'pagado' : 'pendiente',
+          estado: estado,
           metodoPago: metodoPago,
           tipoEntrega: tipoEntrega,
           subtotal: sale.subtotal,

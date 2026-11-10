@@ -44,13 +44,16 @@ class SaleDetail {
 
   factory SaleDetail.fromJson(Map<String, dynamic> json) {
     return SaleDetail(
-      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
-      productId: json['productId']?.toString() ?? json['productoId']?.toString() ?? json['producto']?.toString() ?? '',
-      productName: json['productName'] ?? json['nombreProducto'] ?? json['productoNombre'] ?? '',
-      unitPrice: (json['unitPrice'] ?? json['precioUnitario'] ?? json['precio'] ?? 0).toDouble(),
-      quantity: (json['quantity'] ?? json['cantidad'] ?? 1).toInt(),
-      subtotal: (json['subtotal'] ?? 0).toDouble(),
-      addOns: (json['addOns'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      id: (json['id'] ?? json['idDetalleVenta'] ?? json['idVariante'] ?? json['_id'])?.toString() ?? '',
+      productId: (json['idVariante'] ?? json['productId'] ?? json['productoId'] ?? json['producto'])?.toString() ?? '',
+      productName: json['nombre']?.toString() ?? json['productName']?.toString() ?? json['nombreProducto']?.toString() ?? json['productoNombre']?.toString() ?? '',
+      unitPrice: (json['precioUnitario'] ?? json['unitPrice'] ?? json['precio'] ?? 0).toDouble(),
+      quantity: (json['cantidad'] ?? json['quantity'] ?? 1).toInt(),
+      subtotal: (json['total'] ?? json['subtotal'] ?? 0).toDouble(),
+      addOns: (json['adiciones'] as List<dynamic>?)?.map((a) {
+        if (a is Map) return a['nombre']?.toString() ?? '';
+        return a.toString();
+      }).where((s) => s.isNotEmpty).toList() ?? (json['addOns'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 
@@ -183,7 +186,11 @@ class Sale {
         case 'cancelled':
         case 'cancelada':
         case 'cancelado':
+        case 'anulada':
+        case 'anulado':
           return SaleStatus.cancelled;
+        // Backend states: 'Completada', 'Listo', 'En Preparación', 'En Cocina',
+        // 'ENTREGADO', 'LISTO', 'PREPARANDO', 'pagado', etc. → completed
         default:
           return SaleStatus.completed;
       }
@@ -204,7 +211,8 @@ class Sale {
       }
     }
 
-    final rawDetails = json['details'] ?? json['detalles'] ?? json['items'] ?? [];
+    // Backend returns 'productos' array; also check legacy field names
+    final rawDetails = json['productos'] ?? json['details'] ?? json['detalles'] ?? json['items'] ?? [];
     List<SaleDetail> detailsList = [];
     if (rawDetails is List) {
       detailsList = rawDetails
@@ -213,24 +221,27 @@ class Sale {
           .toList();
     }
 
+    // Map backend date: 'fechaVenta' (ISO string) or 'fecha' or 'createdAt'
+    DateTime parseDate(Map<String, dynamic> j) {
+      final raw = j['fechaVenta'] ?? j['createdAt'] ?? j['fecha'];
+      if (raw == null) return DateTime.now();
+      return DateTime.tryParse(raw.toString()) ?? DateTime.now();
+    }
+
     return Sale(
-      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
-      clientId: json['clientId']?.toString() ?? json['clienteId']?.toString() ?? '',
-      clientName: json['clientName'] ?? json['nombreCliente'] ?? json['clienteNombre'] ?? 'Cliente General',
+      id: (json['id'] ?? json['idVenta'] ?? json['_id'])?.toString() ?? '',
+      clientId: (json['idCliente'] ?? json['clientId'] ?? json['clienteId'])?.toString() ?? '',
+      clientName: json['clienteNombre']?.toString() ?? json['cliente']?.toString() ?? json['clientName']?.toString() ?? json['nombreCliente']?.toString() ?? 'Cliente General',
       details: detailsList,
       subtotal: (json['subtotal'] ?? json['montoTotal'] ?? 0).toDouble(),
-      discount: (json['discount'] ?? json['descuento'] ?? 0).toDouble(),
+      discount: (json['descuentoAplicado'] ?? json['montoDescuento'] ?? json['discount'] ?? json['descuento'] ?? 0).toDouble(),
       total: (json['total'] ?? json['montoTotal'] ?? json['totalVenta'] ?? 0).toDouble(),
-      paymentMethod: parsePaymentMethod(json['paymentMethod']?.toString() ?? json['metodoPago']?.toString()),
-      status: parseStatus(json['status']?.toString() ?? json['estado']?.toString()),
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
-          : (json['fecha'] != null
-              ? DateTime.tryParse(json['fecha'].toString()) ?? DateTime.now()
-              : DateTime.now()),
-      endAt: json['endAt'] != null ? DateTime.tryParse(json['endAt'].toString()) : null,
-      deliveryType: parseDelivery(json['deliveryType']?.toString() ?? json['tipoEntrega']?.toString()),
-      notes: json['notes'] ?? json['notas'] ?? json['observaciones'],
+      paymentMethod: parsePaymentMethod(json['metodoPago']?.toString() ?? json['paymentMethod']?.toString()),
+      status: parseStatus(json['estado']?.toString() ?? json['estadoEntrega']?.toString() ?? json['status']?.toString()),
+      createdAt: parseDate(json),
+      endAt: null,
+      deliveryType: parseDelivery(json['tipoEntrega']?.toString() ?? json['deliveryType']?.toString()),
+      notes: json['especificaciones']?.toString() ?? json['observaciones']?.toString() ?? json['notes']?.toString(),
     );
   }
 

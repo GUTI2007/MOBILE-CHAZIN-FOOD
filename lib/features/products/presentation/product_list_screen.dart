@@ -350,7 +350,15 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
                           // Purple Eventos chip with badge
                           GestureDetector(
-                            onTap: () => showCreateGlobalEventDialog(context),
+                            onTap: () {
+                              // Use addPostFrameCallback to prevent mouse_tracker assertion
+                              // by ensuring the dialog opens after the current frame is done
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) {
+                                  _showEventsVersioningDialog(context, isDark);
+                                }
+                              });
+                            },
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
@@ -1404,7 +1412,6 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
   }
 
-  // ignore: unused_element
   void _showEventsVersioningDialog(BuildContext context, bool isDark) {
     showDialog(
       context: context,
