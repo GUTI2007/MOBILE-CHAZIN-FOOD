@@ -483,12 +483,23 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         onEdit: () => _navigateToForm(context, product: product),
                                         onDelete: () => _confirmDelete(context, product),
                                         onCreateEvent: () {
-                                          // Use the screen-level context (not the item/list builder
-                                          // context) and defer to the next frame to avoid the
-                                          // mouse_tracker assertion triggered mid-gesture.
-                                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          // Capture the navigator BEFORE the async gap to satisfy
+                                          // use_build_context_synchronously and avoid mouse_tracker.
+                                          // Future.delayed(Duration.zero) defers to the NEXT
+                                          // event-loop iteration — after the pointer event is
+                                          // fully released — which is the only reliable way to
+                                          // avoid the mouse_tracker assertion on Flutter mobile.
+                                          final nav = Navigator.of(context);
+                                          final capturedProduct = product;
+                                          Future.delayed(Duration.zero, () {
                                             if (mounted) {
-                                              _showCreateEventDialog(context, product, isDark);
+                                              nav.push(DialogRoute<void>(
+                                                context: nav.context,
+                                                barrierDismissible: false,
+                                                builder: (_) => CreateGlobalEventDialog(
+                                                  linkedProduct: capturedProduct,
+                                                ),
+                                              ));
                                             }
                                           });
                                         },
@@ -2065,17 +2076,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
   }
 
-
-  void _showCreateEventDialog(BuildContext context, Product product, bool isDark) {
-    // showCreateGlobalEventDialog already wraps in addPostFrameCallback.
-    // The caller (onCreateEvent) also uses addPostFrameCallback+mounted guard,
-    // so by the time we reach here the frame is settled and showDialog is safe.
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => CreateGlobalEventDialog(linkedProduct: product),
-    );
-  }}
+}
 
 // ─── Stat Box (matching Figma 2×2 grid) ───
 class _StatBox extends StatelessWidget {
