@@ -259,15 +259,20 @@ class _CreateGlobalEventDialogState
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Compute available height so the dialog never exceeds the screen.
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxH = (screenHeight * 0.88).clamp(400.0, 720.0);
     return Dialog(
       backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 700),
+        constraints: BoxConstraints(maxWidth: 520, maxHeight: maxH),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          // mainAxisSize MUST be max when Column has Expanded children,
+          // otherwise Flutter throws a RenderFlex assertion.
+          mainAxisSize: MainAxisSize.max,
           children: [
             _buildHeader(isDark),
             _buildTabSwitcher(isDark),
