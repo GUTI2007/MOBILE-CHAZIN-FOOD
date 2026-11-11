@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../config/api/api_client.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/security_sanitizer.dart';
@@ -78,6 +79,16 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   late final TextEditingController _nutricionalController;
   late final TextEditingController _almacenamientoController;
   late final TextEditingController _alergenosController;
+
+  // ─── Paso 4: Insumos / Ingredientes (desde backend) ───
+  List<Map<String, dynamic>> _insumosDisponibles = [];
+  final List<Map<String, dynamic>> _insumosSeleccionados = [];
+  bool _loadingInsumos = false;
+  final TextEditingController _insumosSearchController = TextEditingController();
+
+  // ─── Paso 4: Versionamiento de Ficha Técnica ───
+  late final TextEditingController _versionNumController;
+  late final TextEditingController _versionNotasController;
 
   bool get isEditing => widget.product != null;
 
@@ -160,6 +171,24 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       text: 'Puede contener trazas de gluten, derivados lácteos o soya.',
     );
 
+    // Versionamiento de ficha técnica
+    final p2 = widget.product;
+    _versionNumController = TextEditingController(
+      text: p2?.fichaTecnica?['version']?.toString() ?? '1.0',
+    );
+    _versionNotasController = TextEditingController(
+      text: p2?.fichaTecnica?['notasVersion']?.toString() ?? '',
+    );
+
+    // Pre-cargar insumos seleccionados desde el producto (si está editando)
+    if (p2 != null && p2.fichaTecnica?['insumos'] is List) {
+      for (final ins in p2.fichaTecnica!['insumos'] as List) {
+        if (ins is Map) {
+          _insumosSeleccionados.add(Map<String, dynamic>.from(ins));
+        }
+      }
+    }
+
     // Bebidas permitidas por defecto
     _comboBebidasPermitidas.addAll(_todasBebidasCatalogo);
 
@@ -179,6 +208,42 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     _priceController.addListener(() => setState(() {}));
     _nameController.addListener(() => setState(() {}));
+
+    // Load insumos from backend for Ficha Técnica
+    Future.microtask(_loadInsumos);
+  }
+
+  /// Carga los insumos disponibles desde /api/insumos (inventario del backend)
+  Future<void> _loadInsumos() async {
+    if (!mounted) return;
+    setState(() => _loadingInsumos = true);
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final response = await apiClient.get('/insumos');
+      if (response.statusCode == 200 && response.data is List) {
+        final list = response.data as List;
+        if (mounted) {
+          setState(() {
+            _insumosDisponibles = list
+                .map((item) {
+                  final m = Map<String, dynamic>.from(item as Map);
+                  return {
+                    'id': m['idInsumo']?.toString() ?? m['id']?.toString() ?? '',
+                    'nombre': m['nombre']?.toString() ?? '',
+                    'unidad': m['unidadMedida']?.toString() ?? m['unidad']?.toString() ?? 'ud',
+                    'stock': (m['cantidad'] is num) ? (m['cantidad'] as num).toDouble() : 0.0,
+                  };
+                })
+                .where((ins) => (ins['nombre'] as String).isNotEmpty)
+                .toList();
+          });
+        }
+      }
+    } catch (_) {
+      // Si falla la carga, _insumosDisponibles queda vacío — no bloquea el flujo
+    } finally {
+      if (mounted) setState(() => _loadingInsumos = false);
+    }
   }
 
   @override
@@ -197,6 +262,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _nutricionalController.dispose();
     _almacenamientoController.dispose();
     _alergenosController.dispose();
+    _insumosSearchController.dispose();
+    _versionNumController.dispose();
+    _versionNotasController.dispose();
     super.dispose();
   }
 
@@ -302,6 +370,12 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               'informacionNutricional': _nutricionalController.text.trim(),
               'condicionesAlmacenamiento': _almacenamientoController.text.trim(),
               'observacionesAlergenos': _alergenosController.text.trim(),
+              // Insumos/Ingredientes del inventario
+              'insumos': _insumosSeleccionados,
+              // Versionamiento
+              'version': _versionNumController.text.trim().isEmpty ? '1.0' : _versionNumController.text.trim(),
+              'notasVersion': _versionNotasController.text.trim(),
+              'fechaVersion': DateTime.now().toIso8601String(),
             }
           : null;
 
@@ -1960,6 +2034,176 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           maxLines: 2,
           style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF1F2937)),
           decoration: _inputDecoration(hintText: 'Notas adicionales para cocina, advertencias de alérgenos...', isDark: isDark),
+        ),
+        const SizedBox(height: 20),
+
+        // ── 4. INSUMOS / INGREDIENTES DEL INVENTARIO ──
+        Row(
+          children: [
+            const Icon(Icons.inventory_2_outlined, color: Color(0xFF6366F1), size: 18),
+            const SizedBox(width: 6),
+            Text(
+              'INSUMOS / INGREDIENTES',
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w900, color: const Color(0xFF6366F1), letterSpacing: 0.5),
+            ),
+            const Spacer(),
+            if (_loadingInsumos)
+              const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1))),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Selecciona los insumos del inventario que componen este producto.',
+          style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : AppColors.grey400),
+        ),
+        const SizedBox(height: 8),
+
+        // Buscador de insumos
+        TextFormField(
+          controller: _insumosSearchController,
+          style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF1F2937)),
+          decoration: _inputDecoration(hintText: 'Buscar insumo...', isDark: isDark).copyWith(
+            prefixIcon: const Icon(Icons.search, size: 18),
+            suffixIcon: _insumosSearchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 16),
+                    onPressed: () => setState(() => _insumosSearchController.clear()),
+                  )
+                : null,
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 8),
+
+        // Lista de insumos disponibles (lazy, con ListView.builder)
+        if (_insumosDisponibles.isEmpty && !_loadingInsumos)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'No se encontraron insumos en el inventario.',
+              style: GoogleFonts.inter(fontSize: 12, color: isDark ? Colors.white38 : AppColors.grey400),
+            ),
+          )
+        else ...[
+          Builder(builder: (context) {
+            final query = _insumosSearchController.text.toLowerCase();
+            final filtrados = _insumosDisponibles.where((ins) {
+              final nombre = (ins['nombre'] as String).toLowerCase();
+              return query.isEmpty || nombre.contains(query);
+            }).toList();
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: filtrados.length,
+              itemBuilder: (context, i) {
+                final ins = filtrados[i];
+                final nombre = ins['nombre'] as String;
+                final unidad = ins['unidad'] as String;
+                final isSelected = _insumosSeleccionados.any((s) => s['id'] == ins['id']);
+                return CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: isSelected,
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        _insumosSeleccionados.add({
+                          'id': ins['id'],
+                          'nombre': nombre,
+                          'unidad': unidad,
+                          'cantidad': 1,
+                        });
+                      } else {
+                        _insumosSeleccionados.removeWhere((s) => s['id'] == ins['id']);
+                      }
+                    });
+                  },
+                  title: Text(nombre, style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF1F2937))),
+                  subtitle: Text('Stock: ${(ins['stock'] as double).toStringAsFixed(0)} $unidad',
+                      style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : AppColors.grey400)),
+                  activeColor: const Color(0xFF6366F1),
+                  controlAffinity: ListTileControlAffinity.leading,
+                );
+              },
+            );
+          }),
+        ],
+
+        // Resumen de insumos seleccionados
+        if (_insumosSeleccionados.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF6366F1).withAlpha(20) : const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF6366F1).withAlpha(60)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_insumosSeleccionados.length} insumo(s) seleccionado(s)',
+                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF6366F1)),
+                ),
+                const SizedBox(height: 4),
+                ...(_insumosSeleccionados.map((ins) => Text(
+                  '• ${ins['nombre']}',
+                  style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondaryLight),
+                ))),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+
+        // ── 5. VERSIONAMIENTO DE FICHA TÉCNICA ──
+        Row(
+          children: [
+            const Icon(Icons.history_edu_outlined, color: Color(0xFF059669), size: 18),
+            const SizedBox(width: 6),
+            Text(
+              'VERSIONAMIENTO DE FICHA TÉCNICA',
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w900, color: const Color(0xFF059669), letterSpacing: 0.5),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionLabel('N° DE VERSIÓN', isDark),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _versionNumController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF1F2937)),
+                    decoration: _inputDecoration(hintText: 'Ej. 1.0', isDark: isDark),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionLabel('NOTAS DE CAMBIOS', isDark),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _versionNotasController,
+                    style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF1F2937)),
+                    decoration: _inputDecoration(hintText: 'Ej. Ajuste de gramaje o ingrediente...', isDark: isDark),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
       ],

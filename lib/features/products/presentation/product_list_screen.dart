@@ -11,7 +11,6 @@ import '../../events/providers/events_provider.dart';
 import '../../sales/providers/dashboard_provider.dart';
 import '../../sales/providers/orders_provider.dart';
 import '../../../shared/models/event_model.dart';
-import '../../events/presentation/create_global_event_dialog.dart';
 import 'product_form_screen.dart';
 import '../../../widgets/common_app_bar.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -1552,16 +1551,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          TextButton.icon(
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              showCreateGlobalEventDialog(context);
-                            },
-                            icon: const Icon(Icons.add_circle_outline_rounded, size: 16, color: Color(0xFFE65100)),
-                            label: Text('Nuevo Evento', style: GoogleFonts.inter(color: const Color(0xFFE65100), fontWeight: FontWeight.w700, fontSize: 13)),
-                          ),
                           TextButton(
                             onPressed: () => Navigator.pop(ctx),
                             style: TextButton.styleFrom(backgroundColor: isDark ? Colors.white10 : AppColors.grey100, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),

@@ -71,6 +71,8 @@ class Product {
   final List<Map<String, dynamic>> insumos;
   final List<Map<String, dynamic>> variantes;
   final List<Map<String, dynamic>> resenas;
+  /// Mapa JSON de la ficha técnica culinaria (insumos, versión, especificaciones)
+  final Map<String, dynamic>? fichaTecnica;
 
   const Product({
     required this.id,
@@ -96,6 +98,7 @@ class Product {
     this.insumos = const [],
     this.variantes = const [],
     this.resenas = const [],
+    this.fichaTecnica,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -178,6 +181,9 @@ class Product {
       insumos: parseListMap(json['insumos']),
       variantes: parseListMap(json['variantes']),
       resenas: parseListMap(json['resenas']),
+      fichaTecnica: json['fichaTecnica'] is Map
+          ? Map<String, dynamic>.from(json['fichaTecnica'] as Map)
+          : null,
     );
   }
 
@@ -201,6 +207,7 @@ class Product {
       'insumos': insumos,
       'variantes': variantes,
       'resenas': resenas,
+      if (fichaTecnica != null) 'fichaTecnica': fichaTecnica,
     };
   }
 
@@ -226,6 +233,7 @@ class Product {
     List<Map<String, dynamic>>? insumos,
     List<Map<String, dynamic>>? variantes,
     List<Map<String, dynamic>>? resenas,
+    Map<String, dynamic>? fichaTecnica,
   }) {
     return Product(
       id: id,
@@ -251,6 +259,7 @@ class Product {
       insumos: insumos ?? this.insumos,
       variantes: variantes ?? this.variantes,
       resenas: resenas ?? this.resenas,
+      fichaTecnica: fichaTecnica ?? this.fichaTecnica,
     );
   }
 }
