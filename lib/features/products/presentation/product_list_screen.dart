@@ -458,7 +458,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       )
                     else
                       Builder(
-                        builder: (context) {
+                        builder: (listCtx) {
                           final visibleItems = filtered.take(_visibleCount).toList();
                           return AnimationLimiter(
                             child: ListView.separated(
@@ -467,7 +467,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: visibleItems.length,
                               separatorBuilder: (_, i) => const SizedBox(height: 16),
-                              itemBuilder: (context, index) {
+                              itemBuilder: (itemCtx, index) {
                                 final product = visibleItems[index];
                                 return AnimationConfiguration.staggeredList(
                                   position: index,
@@ -482,7 +482,16 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         onView: () => _showProductDetailsDialog(context, product, isDark),
                                         onEdit: () => _navigateToForm(context, product: product),
                                         onDelete: () => _confirmDelete(context, product),
-                                        onCreateEvent: () => _showCreateEventDialog(context, product, isDark),
+                                        onCreateEvent: () {
+                                          // Use the screen-level context (not the item/list builder
+                                          // context) and defer to the next frame to avoid the
+                                          // mouse_tracker assertion triggered mid-gesture.
+                                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                                            if (mounted) {
+                                              _showCreateEventDialog(context, product, isDark);
+                                            }
+                                          });
+                                        },
                                       ),
                                     ),
                                   ),
@@ -2058,10 +2067,15 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
 
   void _showCreateEventDialog(BuildContext context, Product product, bool isDark) {
-    // Open the full 3-step Campaign wizard pre-linked to the given product
-    showCreateGlobalEventDialog(context, linkedProduct: product);
-  }
-}
+    // showCreateGlobalEventDialog already wraps in addPostFrameCallback.
+    // The caller (onCreateEvent) also uses addPostFrameCallback+mounted guard,
+    // so by the time we reach here the frame is settled and showDialog is safe.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CreateGlobalEventDialog(linkedProduct: product),
+    );
+  }}
 
 // ─── Stat Box (matching Figma 2×2 grid) ───
 class _StatBox extends StatelessWidget {
@@ -2442,37 +2456,41 @@ class _FigmaProductCard extends StatelessWidget {
           // ─── Crear Evento Button ───
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: GestureDetector(
-              onTap: onCreateEvent,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF8E1),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF5D4037) : const Color(0xFFFFE0B2),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onCreateEvent,
+                borderRadius: BorderRadius.circular(24),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF8E1),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF5D4037) : const Color(0xFFFFE0B2),
+                    ),
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.bolt_rounded,
-                      size: 16,
-                      color: isDark ? const Color(0xFFFFCC80) : const Color(0xFFEF6C00),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.bolt_rounded,
+                          size: 16,
+                          color: isDark ? const Color(0xFFFFCC80) : const Color(0xFFEF6C00),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Crear Evento',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? const Color(0xFFFFCC80) : const Color(0xFFEF6C00),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Crear Evento',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFFFFCC80) : const Color(0xFFEF6C00),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
