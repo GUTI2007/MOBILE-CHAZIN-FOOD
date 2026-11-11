@@ -483,24 +483,39 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         onEdit: () => _navigateToForm(context, product: product),
                                         onDelete: () => _confirmDelete(context, product),
                                         onCreateEvent: () {
-                                          // Capture the navigator BEFORE the async gap to satisfy
-                                          // use_build_context_synchronously and avoid mouse_tracker.
-                                          // Future.delayed(Duration.zero) defers to the NEXT
-                                          // event-loop iteration — after the pointer event is
-                                          // fully released — which is the only reliable way to
-                                          // avoid the mouse_tracker assertion on Flutter mobile.
-                                          final nav = Navigator.of(context);
+                                          // Load Riverpod data SYNCHRONOUSLY (before the async gap)
+                                          // then pass it as plain constructor params to avoid any
+                                          // ConsumerWidget-inside-dialog instability.
+                                          final productsState = ref.read(productsProvider);
+                                          final allProds = productsState.products;
+                                          final allCats = productsState.categories
+                                              .where((c) =>
+                                                  c.id != 'cat_all' &&
+                                                  c.id != '0' &&
+                                                  c.isActive)
+                                              .toList();
                                           final capturedProduct = product;
+                                          final eventsNotifier =
+                                              ref.read(eventsProvider.notifier);
+                                          // Capture navigator synchronously (before the async gap)
+                                          // so we never use BuildContext across an async boundary
+                                          // (satisfies use_build_context_synchronously lint).
+                                          final nav = Navigator.of(context);
+                                          // Defer to next event-loop iteration so the tap gesture
+                                          // is fully released before the dialog overlay is painted.
                                           Future.delayed(Duration.zero, () {
-                                            if (mounted) {
-                                              nav.push(DialogRoute<void>(
-                                                context: nav.context,
-                                                barrierDismissible: false,
-                                                builder: (_) => CreateGlobalEventDialog(
-                                                  linkedProduct: capturedProduct,
-                                                ),
-                                              ));
-                                            }
+                                            if (!mounted) return;
+                                            showDialog<void>(
+                                              context: nav.context,
+                                              barrierDismissible: false,
+                                              builder: (_) => CreateGlobalEventDialog(
+                                                linkedProduct: capturedProduct,
+                                                allProducts: allProds,
+                                                allCategories: allCats,
+                                                onSave: (event) =>
+                                                    eventsNotifier.createEvent(event),
+                                              ),
+                                            );
                                           });
                                         },
                                       ),
