@@ -226,31 +226,31 @@ class _CreateGlobalEventDialogState extends State<CreateGlobalEventDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Use SizedBox with explicit height so Column(mainAxisSize.max) + Expanded works.
     final screenH = MediaQuery.of(context).size.height;
-    final dialogH = (screenH * 0.88).clamp(420.0, 720.0);
+    final dialogH = (screenH * 0.88).clamp(420.0, 760.0);
 
-    return Dialog(
-      backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      clipBehavior: Clip.antiAlias,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
-      child: SizedBox(
-        // Explicitly bounded height so Expanded children work correctly.
-        height: dialogH,
-        child: Column(
-          children: [
-            _buildHeader(isDark),
-            _buildTabSwitcher(isDark),
-            _buildStepIndicator(isDark),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: _buildStepContent(isDark),
+    // Retorna el contenido limpio del wizard sin Dialog/AlertDialog wrapper.
+    // El caller (showDialog en product_list_screen) provee el Material + Center + SizedBox.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Material(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        child: SizedBox(
+          height: dialogH,
+          child: Column(
+            children: [
+              _buildHeader(isDark),
+              _buildTabSwitcher(isDark),
+              _buildStepIndicator(isDark),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: _buildStepContent(isDark),
+                ),
               ),
-            ),
-            _buildFooter(isDark),
-          ],
+              _buildFooter(isDark),
+            ],
+          ),
         ),
       ),
     );

@@ -483,40 +483,48 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         onEdit: () => _navigateToForm(context, product: product),
                                         onDelete: () => _confirmDelete(context, product),
                                         onCreateEvent: () {
-                                          // Load Riverpod data SYNCHRONOUSLY (before the async gap)
-                                          // then pass it as plain constructor params to avoid any
-                                          // ConsumerWidget-inside-dialog instability.
-                                          final productsState = ref.read(productsProvider);
-                                          final allProds = productsState.products;
-                                          final allCats = productsState.categories
-                                              .where((c) =>
-                                                  c.id != 'cat_all' &&
-                                                  c.id != '0' &&
-                                                  c.isActive)
-                                              .toList();
-                                          final capturedProduct = product;
-                                          final eventsNotifier =
-                                              ref.read(eventsProvider.notifier);
-                                          // Capture navigator synchronously (before the async gap)
-                                          // so we never use BuildContext across an async boundary
-                                          // (satisfies use_build_context_synchronously lint).
-                                          final nav = Navigator.of(context);
-                                          // Defer to next event-loop iteration so the tap gesture
-                                          // is fully released before the dialog overlay is painted.
-                                          Future.delayed(Duration.zero, () {
-                                            if (!mounted) return;
-                                            showDialog<void>(
-                                              context: nav.context,
-                                              barrierDismissible: false,
-                                              builder: (_) => CreateGlobalEventDialog(
-                                                linkedProduct: capturedProduct,
-                                                allProducts: allProds,
-                                                allCategories: allCats,
-                                                onSave: (event) =>
-                                                    eventsNotifier.createEvent(event),
-                                              ),
-                                            );
-                                          });
+                                          // Apertura síncrona y segura — sin Future.delayed
+                                          // ni Navigator complejo. El Material wrapper
+                                          // transparente garantiza que el diálogo no
+                                          // hereda ningún estado de layout del árbol del
+                                          // producto y abre siempre fluido.
+                                          showDialog<void>(
+                                            context: context,
+                                            barrierDismissible: true,
+                                            barrierColor: Colors.black54,
+                                            builder: (BuildContext dialogCtx) {
+                                              return Material(
+                                                type: MaterialType.transparency,
+                                                child: Center(
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 24,
+                                                    ),
+                                                    child: CreateGlobalEventDialog(
+                                                      linkedProduct: product,
+                                                      allProducts:
+                                                          ref.read(productsProvider).products,
+                                                      allCategories: ref
+                                                          .read(productsProvider)
+                                                          .categories
+                                                          .where((c) =>
+                                                              c.id != 'cat_all' &&
+                                                              c.id != '0' &&
+                                                              c.isActive)
+                                                          .toList(),
+                                                      onSave: (eventData) async {
+                                                        final success = await ref
+                                                            .read(eventsProvider.notifier)
+                                                            .createEvent(eventData);
+                                                        return success;
+                                                      },
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          );
                                         },
                                       ),
                                     ),
