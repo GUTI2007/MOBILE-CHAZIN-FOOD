@@ -8,7 +8,7 @@ import '../../../shared/models/product_model.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
 import '../providers/products_provider.dart';
 import '../../events/providers/events_provider.dart';
-import '../../events/presentation/create_global_event_dialog.dart';
+import '../../events/presentation/create_event_screen.dart';
 import '../../sales/providers/dashboard_provider.dart';
 import '../../sales/providers/orders_provider.dart';
 import '../../../shared/models/event_model.dart';
@@ -483,47 +483,14 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         onEdit: () => _navigateToForm(context, product: product),
                                         onDelete: () => _confirmDelete(context, product),
                                         onCreateEvent: () {
-                                          // Apertura síncrona y segura — sin Future.delayed
-                                          // ni Navigator complejo. El Material wrapper
-                                          // transparente garantiza que el diálogo no
-                                          // hereda ningún estado de layout del árbol del
-                                          // producto y abre siempre fluido.
-                                          showDialog<void>(
-                                            context: context,
-                                            barrierDismissible: true,
-                                            barrierColor: Colors.black54,
-                                            builder: (BuildContext dialogCtx) {
-                                              return Material(
-                                                type: MaterialType.transparency,
-                                                child: Center(
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 24,
-                                                    ),
-                                                    child: CreateGlobalEventDialog(
-                                                      linkedProduct: product,
-                                                      allProducts:
-                                                          ref.read(productsProvider).products,
-                                                      allCategories: ref
-                                                          .read(productsProvider)
-                                                          .categories
-                                                          .where((c) =>
-                                                              c.id != 'cat_all' &&
-                                                              c.id != '0' &&
-                                                              c.isActive)
-                                                          .toList(),
-                                                      onSave: (eventData) async {
-                                                        final success = await ref
-                                                            .read(eventsProvider.notifier)
-                                                            .createEvent(eventData);
-                                                        return success;
-                                                      },
-                                                    ),
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                          // Navegación a pantalla completa — elimina 100%
+                                          // los problemas de overlay/mouse_tracker/dialog.
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (_) => CreateEventScreen(
+                                                linkedProduct: product,
+                                              ),
+                                            ),
                                           );
                                         },
                                       ),
