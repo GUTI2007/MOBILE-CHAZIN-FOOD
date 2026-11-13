@@ -1,806 +1,834 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/models/event_model.dart';
 import '../../../shared/services/cloudinary_service.dart';
 import '../../events/providers/events_provider.dart';
 import '../../products/providers/products_provider.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CreateEventScreen — Pantalla completa con Scaffold propio.
-// Navigator.push evita cualquier problema de mouse_tracker/overlay en web/mobile.
-// AppBar usa PreferredSize+Container (garantizado en Flutter Web y Mobile).
-// Body usa ListView simple — sin Column+Expanded que causa constraints vacíos.
-// ─────────────────────────────────────────────────────────────────────────────
+/// Pantalla completa para crear una campaña/evento.
+/// Diseño ultra-simple para garantizar renderizado en Flutter Web (CanvasKit) y Mobile.
 class CreateEventScreen extends ConsumerStatefulWidget {
   final Product? linkedProduct;
   const CreateEventScreen({super.key, this.linkedProduct});
 
   @override
-  ConsumerState<CreateEventScreen> createState() => _CreateEventScreenState();
+  ConsumerState<CreateEventScreen> createState() => _State();
 }
 
-class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
-  static const _kOrange  = Color(0xFFE65100);
-  static const _kOrange2 = Color(0xFFF97316);
-  static const _kGreen   = Color(0xFF22C55E);
+class _State extends ConsumerState<CreateEventScreen> {
+  // Paso actual
+  int _step = 0;
 
-  // ─── Wizard state ─────────────────────────────────────────────────────────
-  int    _step    = 0;
-  String _dinamica = 'promo_2x1';
+  // Paso 1
+  String _tipo = 'promo_2x1';
+  final _titulo = TextEditingController();
+  final _desc = TextEditingController();
+  final _pct = TextEditingController();
+  final _precio = TextEditingController();
+  final _top = TextEditingController();
 
-  final _tituloCtrl         = TextEditingController();
-  final _descCtrl           = TextEditingController();
-  final _descuentoCtrl      = TextEditingController();
-  final _precioEspecialCtrl = TextEditingController();
-  final _toppingCtrl        = TextEditingController();
+  // Paso 2
+  final List<Product> _selProd = [];
+  String _search = '';
 
-  List<Product> _selectedProducts    = [];
-  String        _productSearch       = '';
-  String?       _selectedCategoryFilter;
+  // Paso 3
+  String? _banner;
+  final _bannerCtrl = TextEditingController();
+  bool _permanente = false;
+  DateTime _inicio = DateTime.now();
+  DateTime _fin = DateTime.now().add(const Duration(days: 30));
 
-  String?  _bannerUrl;
-  bool     _subiendoBanner  = false;
-  final    _bannerUrlCtrl   = TextEditingController();
-  bool     _campanaPermanente = false;
-  DateTime _fechaInicio = DateTime.now();
-  DateTime _fechaFin    = DateTime.now().add(const Duration(days: 30));
+  bool _saving = false;
 
-  bool _guardando = false;
+  static const _orange = Color(0xFFE65100);
+  static const _green = Color(0xFF22C55E);
 
-  static const List<Map<String, dynamic>> _dinamicaOpts = [
-    {'id': 'promo_2x1',       'label': 'Promoción 2x1',    'icon': Icons.local_offer_rounded,    'desc': 'Lleva 2 unidades al precio de 1',              'color': Color(0xFFEF4444)},
-    {'id': 'descuento',       'label': 'Descuento %',       'icon': Icons.percent_rounded,         'desc': 'Rebaja porcentual sobre el precio de carta',   'color': Color(0xFF22C55E)},
-    {'id': 'precio_especial', 'label': 'Precio Especial',   'icon': Icons.price_change_rounded,    'desc': 'Precio promocional fijo y rebajado',           'color': Color(0xFFF97316)},
-    {'id': 'topping_extra',   'label': 'Topping Extra',     'icon': Icons.add_circle_rounded,      'desc': 'Topping o ingrediente de cortesía sin costo',  'color': Color(0xFF8B5CF6)},
-    {'id': 'edicion_especial','label': 'Edición Especial',  'icon': Icons.emoji_events_rounded,    'desc': 'Campaña gastronómica o temporada exclusiva',   'color': Color(0xFFEAB308)},
-    {'id': 'oferta_relampago','label': 'Oferta Relámpago',  'icon': Icons.flash_on_rounded,        'desc': 'Promoción express por tiempo limitado',        'color': Color(0xFFF59E0B)},
+  static const _tipos = [
+    {'id': 'promo_2x1', 'nombre': 'Promoción 2x1', 'emoji': '🏷️'},
+    {'id': 'descuento', 'nombre': 'Descuento %', 'emoji': '💯'},
+    {'id': 'precio_especial', 'nombre': 'Precio Especial', 'emoji': '💲'},
+    {'id': 'topping_extra', 'nombre': 'Topping Extra', 'emoji': '➕'},
+    {'id': 'edicion_especial', 'nombre': 'Edición Especial', 'emoji': '⭐'},
+    {'id': 'oferta_relampago', 'nombre': 'Oferta Relámpago', 'emoji': '⚡'},
   ];
 
   @override
   void initState() {
     super.initState();
-    if (widget.linkedProduct != null) {
-      _selectedProducts = [widget.linkedProduct!];
-    }
+    if (widget.linkedProduct != null) _selProd.add(widget.linkedProduct!);
   }
 
   @override
   void dispose() {
-    _tituloCtrl.dispose(); _descCtrl.dispose(); _descuentoCtrl.dispose();
-    _precioEspecialCtrl.dispose(); _toppingCtrl.dispose(); _bannerUrlCtrl.dispose();
+    _titulo.dispose();
+    _desc.dispose();
+    _pct.dispose();
+    _precio.dispose();
+    _top.dispose();
+    _bannerCtrl.dispose();
     super.dispose();
   }
 
-  // ─── Computed ─────────────────────────────────────────────────────────────
-  String get _dinamicaLabel => (_dinamicaOpts.firstWhere(
-        (o) => o['id'] == _dinamica, orElse: () => _dinamicaOpts.first)['label'] as String);
-
   String _fmt(DateTime d) =>
-      '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
-  List<Product> get _filteredProducts {
-    var list = List<Product>.from(ref.read(productsProvider).products);
-    if (_selectedCategoryFilter != null) {
-      list = list.where((p) => p.categoryId == _selectedCategoryFilter).toList();
+  Future<void> _save() async {
+    if (_titulo.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El título es obligatorio'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
     }
-    if (_productSearch.isNotEmpty) {
-      final q = _productSearch.toLowerCase();
-      list = list.where((p) =>
-          p.name.toLowerCase().contains(q) ||
-          p.categoryName.toLowerCase().contains(q)).toList();
-    }
-    return list;
-  }
-
-  List<ProductCategory> get _categories => ref.read(productsProvider).categories
-      .where((c) => c.id != 'cat_all' && c.id != '0' && c.isActive).toList();
-
-  // ─── Actions ──────────────────────────────────────────────────────────────
-  Future<void> _pickDate(bool isStart) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: isStart ? _fechaInicio : _fechaFin,
-      firstDate: DateTime(2024), lastDate: DateTime(2030),
-    );
-    if (picked == null || !mounted) return;
-    setState(() {
-      if (isStart) {
-        _fechaInicio = picked;
-        if (_fechaFin.isBefore(picked)) _fechaFin = picked.add(const Duration(days: 1));
-      } else {
-        _fechaFin = picked;
-      }
-    });
-  }
-
-  Future<void> _guardar() async {
-    if (_tituloCtrl.text.trim().isEmpty) { _snack('El título es obligatorio'); return; }
-    setState(() => _guardando = true);
-    final productIds = _selectedProducts
+    setState(() => _saving = true);
+    final ids = _selProd
         .map((p) => p.id.isNotEmpty ? int.tryParse(p.id) : null)
-        .whereType<int>().toList();
+        .whereType<int>()
+        .toList();
     final event = Event(
-      nombre:        _tituloCtrl.text.trim(),
-      descripcion:   _descCtrl.text.trim(),
-      tipoEvento:    _dinamica,
-      descuento:     _dinamica == 'descuento'       ? double.tryParse(_descuentoCtrl.text)      : null,
-      nuevoPrecio:   _dinamica == 'precio_especial' ? double.tryParse(_precioEspecialCtrl.text) : null,
-      accionInsumo:  _dinamica == 'topping_extra'   ? _toppingCtrl.text.trim()                 : null,
-      isActive:      true,
-      estado:        'Activo',
-      fechaInicio:   _campanaPermanente ? null : _fechaInicio.toIso8601String(),
-      fechaFin:      _campanaPermanente ? null : _fechaFin.toIso8601String(),
-      productosAsociados: productIds.isEmpty ? null : productIds,
-      icono: _bannerUrl ?? (_bannerUrlCtrl.text.trim().isEmpty ? null : _bannerUrlCtrl.text.trim()),
-      isTemporal: !_campanaPermanente,
+      nombre: _titulo.text.trim(),
+      descripcion: _desc.text.trim(),
+      tipoEvento: _tipo,
+      descuento: _tipo == 'descuento' ? double.tryParse(_pct.text) : null,
+      nuevoPrecio: _tipo == 'precio_especial'
+          ? double.tryParse(_precio.text)
+          : null,
+      accionInsumo: _tipo == 'topping_extra' ? _top.text.trim() : null,
+      isActive: true,
+      estado: 'Activo',
+      fechaInicio: _permanente ? null : _inicio.toIso8601String(),
+      fechaFin: _permanente ? null : _fin.toIso8601String(),
+      productosAsociados: ids.isEmpty ? null : ids,
+      icono:
+          _banner ??
+          (_bannerCtrl.text.trim().isEmpty ? null : _bannerCtrl.text.trim()),
+      isTemporal: !_permanente,
     );
     final ok = await ref.read(eventsProvider.notifier).createEvent(event);
     if (!mounted) return;
-    setState(() => _guardando = false);
+    setState(() => _saving = false);
     if (ok) {
-      _snack('✅ Campaña publicada exitosamente', isError: false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Campaña publicada exitosamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
       Navigator.of(context).pop(true);
     } else {
-      _snack('No se pudo publicar. Inténtalo de nuevo.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error al publicar. Inténtalo de nuevo.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-  }
-
-  void _snack(String msg, {bool isError = true}) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.inter(color: Colors.white)),
-      backgroundColor: isError ? AppColors.error : AppColors.success,
-      behavior: SnackBarBehavior.floating,
-    ));
   }
 
   // ─── BUILD ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final isDark     = brightness == Brightness.dark;
-
-    // High-contrast color tokens — work correctly in both light & dark mode
-    final Color scaffoldBg  = isDark ? const Color(0xFF0F0F1A) : const Color(0xFFF5F5F5);
-    final Color cardBg      = isDark ? const Color(0xFF1C1C2E) : Colors.white;
-    final Color borderColor = isDark ? const Color(0xFF2A2A45) : const Color(0xFFE0E0E0);
-    final Color txtMain     = isDark ? Colors.white            : const Color(0xFF111827);
-    final Color txtSub      = isDark ? const Color(0xFFAAAAAA) : const Color(0xFF6B7280);
-
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      // ── AppBar con PreferredSize+Container (funciona en web Y mobile)
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_kOrange, _kOrange2],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+      backgroundColor: const Color(0xFF12121F),
+      appBar: AppBar(
+        backgroundColor: _orange,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Crear Campaña o Promoción',
+              style: GoogleFonts.outfit(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white, size: 20),
-                ),
-                Container(
-                  width: 32, height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(50),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 17),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Crear Campaña o Promoción',
-                        style: GoogleFonts.outfit(
-                          color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-                      Text('Aplica descuentos, 2x1 o beneficios a tu menú.',
-                        style: GoogleFonts.inter(fontSize: 10, color: Colors.white70)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
+            Text(
+              'Aplica descuentos, 2x1 o beneficios',
+              style: GoogleFonts.inter(fontSize: 10, color: Colors.white70),
             ),
-          ),
+          ],
         ),
       ),
-      // ── Body: ListView directo — sin Column+Expanded
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      body: Column(
         children: [
-          _buildTabs(isDark, cardBg, borderColor, txtMain, txtSub),
-          const SizedBox(height: 14),
-          _buildStepBar(isDark, txtSub),
-          const SizedBox(height: 18),
-          _buildStepContent(isDark, cardBg, borderColor, txtMain, txtSub),
-          const SizedBox(height: 100), // espacio para el footer fijo
-        ],
-      ),
-      // ── Footer fijo
-      bottomNavigationBar: _buildFooter(isDark, cardBg, borderColor, txtSub),
-    );
-  }
-
-  // ─── TABS ─────────────────────────────────────────────────────────────────
-  Widget _buildTabs(bool isDark, Color card, Color border, Color txtMain, Color txtSub) {
-    return Row(children: [
-      Expanded(child: _tab(false, Icons.local_offer_rounded,
-          'MENÚ EXISTENTE', '2x1, % OFF o Toppings', card, border, txtMain, txtSub)),
-      const SizedBox(width: 8),
-      Expanded(child: _tab(true, Icons.auto_awesome_rounded,
-          'NUEVO PLATILLO', 'Ficha Técnica desde cero', card, border, txtMain, txtSub)),
-    ]);
-  }
-
-  Widget _tab(bool isNuevo, IconData icon, String title, String sub,
-      Color card, Color border, Color txtMain, Color txtSub) {
-    // "Menú Existente" (isNuevo=false) siempre activo por ahora
-    final sel = !isNuevo;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: sel ? _kOrange.withAlpha(30) : card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: sel ? _kOrange : border, width: sel ? 1.5 : 1),
-      ),
-      child: Row(children: [
-        Icon(icon, size: 16, color: sel ? _kOrange : txtSub),
-        const SizedBox(width: 6),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title,
-            style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700,
-              color: sel ? _kOrange : txtSub)),
-          Text(sub,
-            style: GoogleFonts.inter(fontSize: 8, color: txtSub)),
-        ])),
-      ]),
-    );
-  }
-
-  // ─── STEP BAR ─────────────────────────────────────────────────────────────
-  Widget _buildStepBar(bool isDark, Color txtSub) {
-    final inactiveCircle = isDark ? const Color(0xFF2A2A45) : const Color(0xFFE0E0E0);
-    final inactiveLine   = isDark ? const Color(0xFF2A2A45) : const Color(0xFFE0E0E0);
-    final labels = [
-      '1. Dinámica',
-      '2. Productos (${_selectedProducts.length})',
-      '3. Banner & Fecha',
-    ];
-    return Row(children: [
-      for (int i = 0; i < 3; i++) ...[
-        if (i > 0)
-          Expanded(child: Container(height: 2,
-            color: i <= _step ? _kOrange : inactiveLine)),
-        Column(children: [
-          Container(
-            width: 30, height: 30,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: i < _step ? _kGreen : (i == _step ? _kOrange : inactiveCircle),
-            ),
-            child: Center(
-              child: i < _step
-                  ? const Icon(Icons.check, size: 15, color: Colors.white)
-                  : Text('${i + 1}',
-                      style: GoogleFonts.inter(
-                          fontSize: 12, fontWeight: FontWeight.w700,
-                          color: i == _step ? Colors.white : txtSub)),
+          // Indicador de pasos
+          _stepBar(),
+          // Contenido scrollable
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: _stepContent(),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(labels[i],
-            style: GoogleFonts.inter(fontSize: 9,
-              fontWeight: i == _step ? FontWeight.w700 : FontWeight.w400,
-              color: i == _step ? _kOrange : txtSub)),
-        ]),
-      ],
-    ]);
+        ],
+      ),
+      bottomNavigationBar: _footer(),
+    );
   }
 
-  // ─── STEP ROUTER ──────────────────────────────────────────────────────────
-  Widget _buildStepContent(bool isDark, Color card, Color border,
-      Color txtMain, Color txtSub) {
+  // ─── BARRA DE PASOS ───────────────────────────────────────────────────────
+  Widget _stepBar() {
+    final steps = ['1. Dinámica', '2. Productos', '3. Banner'];
+    return Container(
+      color: const Color(0xFF1C1C2E),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: List.generate(steps.length, (i) {
+          final done = i < _step;
+          final active = i == _step;
+          return Expanded(
+            child: Row(
+              children: [
+                if (i > 0)
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      color: i <= _step ? _orange : const Color(0xFF2A2A45),
+                    ),
+                  ),
+                Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: done
+                          ? _green
+                          : (active ? _orange : const Color(0xFF2A2A45)),
+                      child: done
+                          ? const Icon(
+                              Icons.check,
+                              size: 14,
+                              color: Colors.white,
+                            )
+                          : Text(
+                              '${i + 1}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: active ? Colors.white : Colors.white38,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      steps[i],
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: active ? _orange : Colors.white38,
+                        fontWeight: active
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+                if (i == steps.length - 1) const SizedBox(width: 0),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ─── CONTENIDO POR PASO ───────────────────────────────────────────────────
+  Widget _stepContent() {
     switch (_step) {
-      case 0:  return _buildStep1(isDark, card, border, txtMain, txtSub);
-      case 1:  return _buildStep2(isDark, card, border, txtMain, txtSub);
-      case 2:  return _buildStep3(isDark, card, border, txtMain, txtSub);
-      default: return const SizedBox.shrink();
+      case 0:
+        return _step1();
+      case 1:
+        return _step2();
+      case 2:
+        return _step3();
+      default:
+        return const SizedBox.shrink();
     }
   }
 
-  // ─── STEP 1: Dinámica & Beneficio ─────────────────────────────────────────
-  Widget _buildStep1(bool isDark, Color card, Color border,
-      Color txtMain, Color txtSub) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('¿QUÉ BENEFICIO OFRECERÁ LA CAMPAÑA? *',
-        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: txtSub)),
-      const SizedBox(height: 12),
-      // Grid 3×2 con shrinkWrap dentro de ListView
-      GridView.count(
-        crossAxisCount: 3,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 1.05,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        children: _dinamicaOpts.map((opt) {
-          final id    = opt['id'] as String;
-          final sel   = _dinamica == id;
-          final color = opt['color'] as Color;
-          return GestureDetector(
-            onTap: () => setState(() => _dinamica = id),
-            child: Container(
-              decoration: BoxDecoration(
-                color: sel ? color.withAlpha(isDark ? 60 : 30) : card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: sel ? color : border, width: sel ? 2 : 1),
-              ),
-              padding: const EdgeInsets.all(8),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(35),
-                      borderRadius: BorderRadius.circular(7)),
-                    child: Icon(opt['icon'] as IconData, size: 14, color: color),
-                  ),
-                  if (sel) Icon(Icons.check_circle, size: 14, color: color),
-                ]),
-                const SizedBox(height: 5),
-                Text(opt['label'] as String,
-                  style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700,
-                    color: sel ? color : txtMain)),
-                const SizedBox(height: 2),
-                Text(opt['desc'] as String,
-                  style: GoogleFonts.inter(fontSize: 7.5, color: txtSub, height: 1.3),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-              ]),
-            ),
-          );
-        }).toList(),
-      ),
-      const SizedBox(height: 16),
-      _lbl('TÍTULO DE LA CAMPAÑA *', txtSub),
-      const SizedBox(height: 6),
-      _field(_tituloCtrl, 'Ej: Jueves 2×1 de Burger Artesanal', card, border, txtMain, txtSub),
-      if (_dinamica == 'descuento') ...[
-        const SizedBox(height: 12),
-        _lbl('PORCENTAJE DE DESCUENTO *', txtSub), const SizedBox(height: 6),
-        _field(_descuentoCtrl, 'Ej: 15', card, border, txtMain, txtSub,
-            suffix: '%', kb: TextInputType.number),
-      ],
-      if (_dinamica == 'precio_especial') ...[
-        const SizedBox(height: 12),
-        _lbl('NUEVO PRECIO ESPECIAL (COP) *', txtSub), const SizedBox(height: 6),
-        _field(_precioEspecialCtrl, 'Ej: 15000', card, border, txtMain, txtSub,
-            prefix: r'$', kb: TextInputType.number),
-      ],
-      if (_dinamica == 'topping_extra') ...[
-        const SizedBox(height: 12),
-        _lbl('NOMBRE DEL TOPPING EXTRA *', txtSub), const SizedBox(height: 6),
-        _field(_toppingCtrl, 'Ej: Extra Tocineta Ahumada', card, border, txtMain, txtSub),
-      ],
-      const SizedBox(height: 12),
-      _lbl('DESCRIPCIÓN (OPCIONAL)', txtSub), const SizedBox(height: 6),
-      _field(_descCtrl, 'Breve descripción de la campaña...', card, border, txtMain, txtSub,
-          maxLines: 2),
-    ]);
-  }
-
-  // ─── STEP 2: Productos ────────────────────────────────────────────────────
-  Widget _buildStep2(bool isDark, Color card, Color border,
-      Color txtMain, Color txtSub) {
-    final cats     = _categories;
-    final filtered = _filteredProducts;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('PLATILLOS QUE PARTICIPAN EN LA CAMPAÑA',
-        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: txtMain)),
-      const SizedBox(height: 4),
-      Text('Agrega o retira platillos del catálogo.',
-        style: GoogleFonts.inter(fontSize: 10, color: txtSub)),
-      const SizedBox(height: 12),
-      if (cats.isNotEmpty) ...[
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(children: cats.map((cat) {
-            final sel = _selectedCategoryFilter == cat.id;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => setState(() =>
-                    _selectedCategoryFilter = sel ? null : cat.id),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: sel ? _kOrange : card,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: sel ? _kOrange : border),
-                  ),
-                  child: Text('+ ${cat.name}',
-                    style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600,
-                      color: sel ? Colors.white : txtSub)),
-                ),
-              ),
-            );
-          }).toList()),
+  // ─── PASO 1: Tipo de dinámica ─────────────────────────────────────────────
+  Widget _step1() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '¿QUÉ BENEFICIO OFRECERÁ LA CAMPAÑA?',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.white70,
+          ),
         ),
-        const SizedBox(height: 10),
-      ],
-      TextField(
-        onChanged: (v) => setState(() => _productSearch = v),
-        style: GoogleFonts.inter(fontSize: 13, color: txtMain),
-        decoration: InputDecoration(
-          hintText: 'Buscar producto por nombre o categoría...',
-          hintStyle: GoogleFonts.inter(fontSize: 12, color: txtSub),
-          prefixIcon: const Icon(Icons.search, size: 20, color: _kOrange),
-          filled: true, fillColor: card,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: border)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: border)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kOrange)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        ),
-      ),
-      const SizedBox(height: 12),
-      if (filtered.isEmpty)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Center(child: Column(children: [
-            Icon(Icons.restaurant_menu_outlined, size: 36, color: txtSub),
-            const SizedBox(height: 8),
-            Text('No hay productos seleccionados todavía',
-              style: GoogleFonts.inter(fontSize: 13, color: txtSub)),
-          ])),
-        )
-      else
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: filtered.length,
-          itemBuilder: (ctx, i) {
-            final p   = filtered[i];
-            final sel = _selectedProducts.any((s) => s.id == p.id);
+        const SizedBox(height: 12),
+        // Usar Wrap en lugar de GridView — más simple y sin problemas en web
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _tipos.map((t) {
+            final sel = _tipo == t['id'];
             return GestureDetector(
-              onTap: () => setState(() {
-                if (sel) {
-                  _selectedProducts.removeWhere((s) => s.id == p.id);
-                } else {
-                  _selectedProducts.add(p);
-                }
-              }),
+              onTap: () => setState(() => _tipo = t['id']!),
               child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                width: (MediaQuery.of(context).size.width - 56) / 2,
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: sel ? _kOrange.withAlpha(isDark ? 50 : 25) : card,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: sel ? _kOrange : border),
-                ),
-                child: Row(children: [
-                  Container(
-                    width: 22, height: 22,
-                    decoration: BoxDecoration(
-                      color: sel ? _kOrange : Colors.transparent,
-                      border: Border.all(color: sel ? _kOrange : border),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: sel
-                        ? const Icon(Icons.check, size: 14, color: Colors.white)
-                        : null,
+                  color: sel ? _orange.withAlpha(40) : const Color(0xFF1C1C2E),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: sel ? _orange : const Color(0xFF2A2A45),
+                    width: sel ? 2 : 1,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(p.name,
-                      style: GoogleFonts.inter(fontSize: 13,
-                          fontWeight: FontWeight.w600, color: txtMain)),
-                    Text(p.categoryName,
-                      style: GoogleFonts.inter(fontSize: 11, color: txtSub)),
-                  ])),
-                  Text('\$${p.price.toStringAsFixed(0)}',
-                    style: GoogleFonts.outfit(fontSize: 14,
-                        fontWeight: FontWeight.w700, color: _kOrange)),
-                ]),
+                ),
+                child: Row(
+                  children: [
+                    Text(t['emoji']!, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        t['nombre']!,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: sel ? _orange : Colors.white,
+                        ),
+                      ),
+                    ),
+                    if (sel)
+                      const Icon(Icons.check_circle, size: 16, color: _orange),
+                  ],
+                ),
               ),
             );
-          },
+          }).toList(),
         ),
-    ]);
+        const SizedBox(height: 16),
+        _label('TÍTULO DE LA CAMPAÑA *'),
+        const SizedBox(height: 6),
+        _textInput(_titulo, 'Ej: Jueves 2×1 de Burger Artesanal'),
+        if (_tipo == 'descuento') ...[
+          const SizedBox(height: 12),
+          _label('PORCENTAJE DE DESCUENTO *'),
+          const SizedBox(height: 6),
+          _textInput(_pct, 'Ej: 15', suffix: '%', kb: TextInputType.number),
+        ],
+        if (_tipo == 'precio_especial') ...[
+          const SizedBox(height: 12),
+          _label('NUEVO PRECIO ESPECIAL (COP) *'),
+          const SizedBox(height: 6),
+          _textInput(
+            _precio,
+            'Ej: 15000',
+            prefix: '\$',
+            kb: TextInputType.number,
+          ),
+        ],
+        if (_tipo == 'topping_extra') ...[
+          const SizedBox(height: 12),
+          _label('NOMBRE DEL TOPPING *'),
+          const SizedBox(height: 6),
+          _textInput(_top, 'Ej: Extra Tocineta Ahumada'),
+        ],
+        const SizedBox(height: 12),
+        _label('DESCRIPCIÓN (OPCIONAL)'),
+        const SizedBox(height: 6),
+        _textInput(_desc, 'Breve descripción...', maxLines: 3),
+      ],
+    );
   }
 
-  // ─── STEP 3: Banner & Vigencia ────────────────────────────────────────────
-  Widget _buildStep3(bool isDark, Color card, Color border,
-      Color txtMain, Color txtSub) {
-    final innerBg = isDark ? const Color(0xFF0F0F1A) : const Color(0xFFF5F5F5);
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Banner card
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: card, borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Icon(Icons.image_rounded, size: 15, color: _kOrange),
-            const SizedBox(width: 6),
-            Text('BANNER PROMOCIONAL',
-              style: GoogleFonts.inter(fontSize: 10,
-                  fontWeight: FontWeight.w700, color: txtMain)),
-          ]),
-          const SizedBox(height: 12),
-          Row(children: [
-            Container(
-              width: 80, height: 56,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2A2A45) : const Color(0xFFE0E0E0),
-                borderRadius: BorderRadius.circular(10)),
-              child: _bannerUrl != null && _bannerUrl!.isNotEmpty
-                  ? ClipRRect(borderRadius: BorderRadius.circular(10),
-                      child: Image.network(_bannerUrl!, fit: BoxFit.cover))
-                  : Center(child: Icon(Icons.image_outlined, size: 24, color: txtSub)),
+  // ─── PASO 2: Productos ────────────────────────────────────────────────────
+  Widget _step2() {
+    final allP = ref.read(productsProvider).products;
+    final filtered = _search.isEmpty
+        ? allP
+        : allP
+              .where(
+                (p) =>
+                    p.name.toLowerCase().contains(_search.toLowerCase()) ||
+                    p.categoryName.toLowerCase().contains(
+                      _search.toLowerCase(),
+                    ),
+              )
+              .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'SELECCIONA LOS PRODUCTOS',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.white70,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${_selProd.length} producto(s) seleccionado(s)',
+          style: GoogleFonts.inter(fontSize: 10, color: _orange),
+        ),
+        const SizedBox(height: 12),
+        // Buscador
+        TextField(
+          onChanged: (v) => setState(() => _search = v),
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Buscar producto...',
+            hintStyle: const TextStyle(color: Colors.white38),
+            prefixIcon: const Icon(Icons.search, color: _orange),
+            filled: true,
+            fillColor: const Color(0xFF1C1C2E),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF2A2A45)),
             ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _orange),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (filtered.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(
+                'No se encontraron productos',
+                style: TextStyle(color: Colors.white38),
+              ),
+            ),
+          )
+        else
+          // Columna en lugar de ListView.builder para evitar scrollables anidados
+          Column(
+            children: filtered.map((p) {
+              final sel = _selProd.any((s) => s.id == p.id);
+              return GestureDetector(
+                onTap: () => setState(() {
+                  if (sel) {
+                    _selProd.removeWhere((s) => s.id == p.id);
+                  } else {
+                    _selProd.add(p);
+                  }
+                }),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: sel
+                        ? _orange.withAlpha(40)
+                        : const Color(0xFF1C1C2E),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: sel ? _orange : const Color(0xFF2A2A45),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        sel ? Icons.check_box : Icons.check_box_outline_blank,
+                        color: sel ? _orange : Colors.white38,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p.name,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              p.categoryName,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: Colors.white54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '\$${p.price.toStringAsFixed(0)}',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: _orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
+  // ─── PASO 3: Banner y Vigencia ────────────────────────────────────────────
+  Widget _step3() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Banner
+        _card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'BANNER PROMOCIONAL',
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 10),
               ElevatedButton.icon(
-                onPressed: _subiendoBanner ? null : () async {
-                  setState(() => _subiendoBanner = true);
-                  final url = await CloudinaryService.pickAndUploadImage(context);
-                  if (mounted) setState(() { _bannerUrl = url; _subiendoBanner = false; });
+                onPressed: () async {
+                  final url = await CloudinaryService.pickAndUploadImage(
+                    context,
+                  );
+                  if (mounted && url != null) setState(() => _banner = url);
                 },
-                icon: _subiendoBanner
-                    ? const SizedBox(width: 14, height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.cloud_upload_outlined, size: 15),
-                label: Text('Subir Banner',
-                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+                icon: const Icon(Icons.cloud_upload_outlined),
+                label: const Text('Subir imagen'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _kOrange, foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  backgroundColor: _orange,
+                  foregroundColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: _bannerUrlCtrl,
-                onChanged: (v) => setState(() =>
-                    _bannerUrl = v.trim().isEmpty ? null : v.trim()),
-                style: GoogleFonts.inter(fontSize: 12, color: txtMain),
-                decoration: InputDecoration(
-                  hintText: 'O pegar URL del banner...',
-                  hintStyle: GoogleFonts.inter(fontSize: 11, color: txtSub),
-                  filled: true, fillColor: innerBg,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: border)),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: border)),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: _kOrange)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              if (_banner != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(_banner!, height: 80, fit: BoxFit.cover),
+                ),
+              const SizedBox(height: 8),
+              _textInput(_bannerCtrl, 'O pegar URL del banner...'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Vigencia
+        _card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'VIGENCIA DE LA CAMPAÑA',
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white70,
                 ),
               ),
-            ])),
-          ]),
-        ]),
-      ),
-      const SizedBox(height: 12),
-      // Vigencia card
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: card, borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: border)),
-        child: Column(children: [
-          Row(children: [
-            const Icon(Icons.loop_rounded, size: 15, color: _kOrange),
-            const SizedBox(width: 8),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('CAMPAÑA PERMANENTE',
-                style: GoogleFonts.inter(fontSize: 11,
-                    fontWeight: FontWeight.w700, color: txtMain)),
-              Text('Sin fecha de vencimiento',
-                style: GoogleFonts.inter(fontSize: 10, color: txtSub)),
-            ])),
-            Switch(
-              value: _campanaPermanente,
-              onChanged: (v) => setState(() => _campanaPermanente = v),
-              activeThumbColor: _kOrange,
-              activeTrackColor: _kOrange.withAlpha(100),
-            ),
-          ]),
-          if (!_campanaPermanente) ...[
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: _datePicker('INICIO', _fmt(_fechaInicio),
-                  () => _pickDate(true), card, border, txtMain, txtSub)),
-              const SizedBox(width: 12),
-              Expanded(child: _datePicker('FIN', _fmt(_fechaFin),
-                  () => _pickDate(false), card, border, txtMain, txtSub)),
-            ]),
-          ],
-        ]),
-      ),
-      const SizedBox(height: 12),
-      // Resumen card
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: card, borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Icon(Icons.check_circle_outline_rounded, size: 15, color: _kGreen),
-            const SizedBox(width: 6),
-            Text('RESUMEN DE PUBLICACIÓN',
-              style: GoogleFonts.inter(fontSize: 10,
-                  fontWeight: FontWeight.w700, color: txtMain)),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: _kGreen, borderRadius: BorderRadius.circular(10)),
-              child: Text('LISTO',
-                style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white)),
-            ),
-          ]),
-          const SizedBox(height: 10),
-          _summaryRow('CAMPAÑA',
-              _tituloCtrl.text.isEmpty ? 'Sin título' : _tituloCtrl.text, txtMain, txtSub),
-          Divider(color: border, height: 12),
-          _summaryRow('DINÁMICA', _dinamicaLabel, txtMain, txtSub),
-          Divider(color: border, height: 12),
-          _summaryRow('PRODUCTOS', '${_selectedProducts.length} platillos asignados', txtMain, txtSub),
-          Divider(color: border, height: 12),
-          _summaryRow('VIGENCIA',
-            _campanaPermanente ? 'Permanente' : '${_fmt(_fechaInicio)} → ${_fmt(_fechaFin)}',
-            txtMain, txtSub),
-        ]),
-      ),
-    ]);
+              const SizedBox(height: 10),
+              SwitchListTile(
+                title: const Text(
+                  'Campaña Permanente',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Sin fecha de vencimiento',
+                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+                value: _permanente,
+                onChanged: (v) => setState(() => _permanente = v),
+                activeTrackColor: _orange,
+                activeThumbColor: Colors.white,
+                contentPadding: EdgeInsets.zero,
+              ),
+              if (!_permanente) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _dateTile('INICIO', _fmt(_inicio), () async {
+                        final d = await showDatePicker(
+                          context: context,
+                          initialDate: _inicio,
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime(2030),
+                        );
+                        if (d != null) setState(() => _inicio = d);
+                      }),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _dateTile('FIN', _fmt(_fin), () async {
+                        final d = await showDatePicker(
+                          context: context,
+                          initialDate: _fin,
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime(2030),
+                        );
+                        if (d != null) setState(() => _fin = d);
+                      }),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Resumen
+        _card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'RESUMEN FINAL',
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white70,
+                ),
+              ),
+              const Divider(color: Color(0xFF2A2A45), height: 16),
+              _row(
+                'CAMPAÑA',
+                _titulo.text.isEmpty ? 'Sin título' : _titulo.text,
+              ),
+              _row(
+                'TIPO',
+                _tipos.firstWhere((t) => t['id'] == _tipo)['nombre']!,
+              ),
+              _row('PRODUCTOS', '${_selProd.length} seleccionados'),
+              _row(
+                'VIGENCIA',
+                _permanente ? 'Permanente' : '${_fmt(_inicio)} → ${_fmt(_fin)}',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   // ─── FOOTER ───────────────────────────────────────────────────────────────
-  Widget _buildFooter(bool isDark, Color card, Color border, Color txtSub) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(16, 10, 16,
-          MediaQuery.of(context).padding.bottom + 10),
-      decoration: BoxDecoration(
-        color: card,
-        border: Border(top: BorderSide(color: border)),
-      ),
-      child: Row(children: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancelar',
-            style: GoogleFonts.inter(color: txtSub)),
+  Widget _footer() {
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        color: const Color(0xFF1C1C2E),
+        child: Row(
+          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.white54),
+              ),
+            ),
+            const Spacer(),
+            if (_step > 0)
+              TextButton.icon(
+                onPressed: () => setState(() => _step--),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  size: 12,
+                  color: _orange,
+                ),
+                label: const Text('Anterior', style: TextStyle(color: _orange)),
+              ),
+            const SizedBox(width: 8),
+            if (_step < 2)
+              ElevatedButton(
+                onPressed: () => setState(() => _step++),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Siguiente ›',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              )
+            else
+              ElevatedButton(
+                onPressed: _saving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        '⚡ Crear y Publicar',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+              ),
+          ],
         ),
-        const Spacer(),
-        if (_step > 0) ...[
-          TextButton.icon(
-            onPressed: () => setState(() => _step--),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 13),
-            label: Text('Anterior',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _kOrange)),
-            style: TextButton.styleFrom(foregroundColor: _kOrange),
-          ),
-          const SizedBox(width: 8),
-        ],
-        if (_step < 2)
-          ElevatedButton(
-            onPressed: () => setState(() => _step++),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kOrange, foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('Siguiente', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14)),
-              const SizedBox(width: 6),
-              const Icon(Icons.arrow_forward_ios_rounded, size: 13),
-            ]),
-          )
-        else
-          ElevatedButton(
-            onPressed: _guardando ? null : _guardar,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kOrange, foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: _guardando
-                ? const SizedBox(width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.auto_awesome, size: 15),
-                    const SizedBox(width: 6),
-                    Text('Crear y Publicar Campaña',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13)),
-                  ]),
-          ),
-      ]),
+      ),
     );
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────────────
-  Widget _datePicker(String label, String value, VoidCallback onTap,
-      Color card, Color border, Color txtMain, Color txtSub) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: card, borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 9,
-              fontWeight: FontWeight.w700, color: txtSub)),
-          const SizedBox(height: 4),
-          Row(children: [
-            const Icon(Icons.calendar_today_rounded, size: 12, color: _kOrange),
-            const SizedBox(width: 4),
-            Text(value, style: GoogleFonts.inter(fontSize: 12,
-                fontWeight: FontWeight.w600, color: txtMain)),
-          ]),
-        ]),
-      ),
-    );
-  }
+  Widget _card(Widget child) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF1C1C2E),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0xFF2A2A45)),
+    ),
+    child: child,
+  );
 
-  Widget _summaryRow(String label, String value, Color txtMain, Color txtSub) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 9,
-            fontWeight: FontWeight.w700, color: txtSub)),
-        Flexible(child: Text(value, textAlign: TextAlign.end,
-          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: txtMain),
-          overflow: TextOverflow.ellipsis)),
-      ]),
-    );
-  }
+  Widget _label(String t) => Text(
+    t,
+    style: GoogleFonts.inter(
+      fontSize: 10,
+      fontWeight: FontWeight.w700,
+      color: Colors.white60,
+    ),
+  );
 
-  Widget _lbl(String text, Color txtSub) => Text(text,
-    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: txtSub));
-
-  Widget _field(TextEditingController ctrl, String hint,
-      Color card, Color border, Color txtMain, Color txtSub,
-      {String? suffix, String? prefix, int maxLines = 1, TextInputType? kb}) {
+  Widget _textInput(
+    TextEditingController ctrl,
+    String hint, {
+    String? suffix,
+    String? prefix,
+    int maxLines = 1,
+    TextInputType? kb,
+  }) {
     return TextField(
-      controller: ctrl, maxLines: maxLines, keyboardType: kb,
-      style: GoogleFonts.inter(fontSize: 14, color: txtMain),
+      controller: ctrl,
+      maxLines: maxLines,
+      keyboardType: kb,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(fontSize: 13, color: txtSub),
-        suffixText: suffix, prefixText: prefix,
-        filled: true, fillColor: card,
+        hintStyle: const TextStyle(color: Colors.white38),
+        suffixText: suffix,
+        prefixText: prefix,
+        filled: true,
+        fillColor: const Color(0xFF1C1C2E),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: border)),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+        ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: border)),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: _kOrange)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          borderSide: const BorderSide(color: _orange),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
     );
   }
+
+  Widget _dateTile(String label, String value, VoidCallback onTap) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF12121F),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF2A2A45)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 9, color: Colors.white38),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today, size: 11, color: _orange),
+                  const SizedBox(width: 4),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _row(String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Colors.white38),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    ),
+  );
 }
