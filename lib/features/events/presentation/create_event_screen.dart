@@ -8,17 +8,18 @@ import '../../events/providers/events_provider.dart';
 import '../../products/providers/products_provider.dart';
 
 /// Pantalla completa para crear una campaña/evento.
-/// Diseño ultra-simple para garantizar renderizado en Flutter Web (CanvasKit) y Mobile.
+/// Diseñada para Flutter Web (CanvasKit) + Mobile.
+/// Body: ListView directo (sin Column+Expanded) para evitar
+/// problemas de constraints en CanvasKit.
 class CreateEventScreen extends ConsumerStatefulWidget {
   final Product? linkedProduct;
   const CreateEventScreen({super.key, this.linkedProduct});
 
   @override
-  ConsumerState<CreateEventScreen> createState() => _State();
+  ConsumerState<CreateEventScreen> createState() => _CreateEventScreenState();
 }
 
-class _State extends ConsumerState<CreateEventScreen> {
-  // Paso actual
+class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   int _step = 0;
 
   // Paso 1
@@ -44,6 +45,9 @@ class _State extends ConsumerState<CreateEventScreen> {
 
   static const _orange = Color(0xFFE65100);
   static const _green = Color(0xFF22C55E);
+  static const _bg = Color(0xFF12121F);
+  static const _card = Color(0xFF1C1C2E);
+  static const _border = Color(0xFF2A2A45);
 
   static const _tipos = [
     {'id': 'promo_2x1', 'nombre': 'Promoción 2x1', 'emoji': '🏷️'},
@@ -94,17 +98,15 @@ class _State extends ConsumerState<CreateEventScreen> {
       descripcion: _desc.text.trim(),
       tipoEvento: _tipo,
       descuento: _tipo == 'descuento' ? double.tryParse(_pct.text) : null,
-      nuevoPrecio: _tipo == 'precio_especial'
-          ? double.tryParse(_precio.text)
-          : null,
+      nuevoPrecio:
+          _tipo == 'precio_especial' ? double.tryParse(_precio.text) : null,
       accionInsumo: _tipo == 'topping_extra' ? _top.text.trim() : null,
       isActive: true,
       estado: 'Activo',
       fechaInicio: _permanente ? null : _inicio.toIso8601String(),
       fechaFin: _permanente ? null : _fin.toIso8601String(),
       productosAsociados: ids.isEmpty ? null : ids,
-      icono:
-          _banner ??
+      icono: _banner ??
           (_bannerCtrl.text.trim().isEmpty ? null : _bannerCtrl.text.trim()),
       isTemporal: !_permanente,
     );
@@ -133,7 +135,7 @@ class _State extends ConsumerState<CreateEventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF12121F),
+      backgroundColor: _bg,
       appBar: AppBar(
         backgroundColor: _orange,
         foregroundColor: Colors.white,
@@ -154,23 +156,25 @@ class _State extends ConsumerState<CreateEventScreen> {
               ),
             ),
             Text(
-              'Aplica descuentos, 2x1 o beneficios',
+              'Aplica descuentos, 2×1 o beneficios',
               style: GoogleFonts.inter(fontSize: 10, color: Colors.white70),
             ),
           ],
         ),
       ),
-      body: Column(
+      // ── ListView como body directo ──────────────────────────────────────
+      // Evita el problema de Column+Expanded+SingleChildScrollView en Flutter
+      // Web CanvasKit que causa body negro.
+      body: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          // Indicador de pasos
           _stepBar(),
-          // Contenido scrollable
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: _stepContent(),
-            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _stepContent(),
           ),
+          // Espacio extra al final para que el footer no tape el contenido
+          const SizedBox(height: 20),
         ],
       ),
       bottomNavigationBar: _footer(),
@@ -181,7 +185,7 @@ class _State extends ConsumerState<CreateEventScreen> {
   Widget _stepBar() {
     final steps = ['1. Dinámica', '2. Productos', '3. Banner'];
     return Container(
-      color: const Color(0xFF1C1C2E),
+      color: _card,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: List.generate(steps.length, (i) {
@@ -194,22 +198,18 @@ class _State extends ConsumerState<CreateEventScreen> {
                   Expanded(
                     child: Container(
                       height: 2,
-                      color: i <= _step ? _orange : const Color(0xFF2A2A45),
+                      color: i <= _step ? _orange : _border,
                     ),
                   ),
                 Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     CircleAvatar(
                       radius: 14,
-                      backgroundColor: done
-                          ? _green
-                          : (active ? _orange : const Color(0xFF2A2A45)),
+                      backgroundColor:
+                          done ? _green : (active ? _orange : _border),
                       child: done
-                          ? const Icon(
-                              Icons.check,
-                              size: 14,
-                              color: Colors.white,
-                            )
+                          ? const Icon(Icons.check, size: 14, color: Colors.white)
                           : Text(
                               '${i + 1}',
                               style: TextStyle(
@@ -225,9 +225,8 @@ class _State extends ConsumerState<CreateEventScreen> {
                       style: TextStyle(
                         fontSize: 8,
                         color: active ? _orange : Colors.white38,
-                        fontWeight: active
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight:
+                            active ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -259,57 +258,12 @@ class _State extends ConsumerState<CreateEventScreen> {
   Widget _step1() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          '¿QUÉ BENEFICIO OFRECERÁ LA CAMPAÑA?',
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Colors.white70,
-          ),
-        ),
+        _sectionLabel('¿QUÉ BENEFICIO OFRECERÁ LA CAMPAÑA?'),
         const SizedBox(height: 12),
-        // Usar Wrap en lugar de GridView — más simple y sin problemas en web
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _tipos.map((t) {
-            final sel = _tipo == t['id'];
-            return GestureDetector(
-              onTap: () => setState(() => _tipo = t['id']!),
-              child: Container(
-                width: (MediaQuery.of(context).size.width - 56) / 2,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: sel ? _orange.withAlpha(40) : const Color(0xFF1C1C2E),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: sel ? _orange : const Color(0xFF2A2A45),
-                    width: sel ? 2 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(t['emoji']!, style: const TextStyle(fontSize: 20)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        t['nombre']!,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: sel ? _orange : Colors.white,
-                        ),
-                      ),
-                    ),
-                    if (sel)
-                      const Icon(Icons.check_circle, size: 16, color: _orange),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+        // Grid 2 columnas usando Row+Column para evitar GridView en web
+        ..._buildTiposGrid(),
         const SizedBox(height: 16),
         _label('TÍTULO DE LA CAMPAÑA *'),
         const SizedBox(height: 6),
@@ -324,12 +278,8 @@ class _State extends ConsumerState<CreateEventScreen> {
           const SizedBox(height: 12),
           _label('NUEVO PRECIO ESPECIAL (COP) *'),
           const SizedBox(height: 6),
-          _textInput(
-            _precio,
-            'Ej: 15000',
-            prefix: '\$',
-            kb: TextInputType.number,
-          ),
+          _textInput(_precio, 'Ej: 15000',
+              prefix: r'$', kb: TextInputType.number),
         ],
         if (_tipo == 'topping_extra') ...[
           const SizedBox(height: 12),
@@ -345,32 +295,82 @@ class _State extends ConsumerState<CreateEventScreen> {
     );
   }
 
+  List<Widget> _buildTiposGrid() {
+    final rows = <Widget>[];
+    for (int i = 0; i < _tipos.length; i += 2) {
+      rows.add(
+        Row(
+          children: [
+            Expanded(child: _tipoCard(_tipos[i])),
+            const SizedBox(width: 8),
+            Expanded(
+              child: i + 1 < _tipos.length
+                  ? _tipoCard(_tipos[i + 1])
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      );
+      if (i + 2 < _tipos.length) rows.add(const SizedBox(height: 8));
+    }
+    return rows;
+  }
+
+  Widget _tipoCard(Map<String, String> t) {
+    final sel = _tipo == t['id'];
+    return GestureDetector(
+      onTap: () => setState(() => _tipo = t['id']!),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: sel ? _orange.withAlpha(40) : _card,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: sel ? _orange : _border,
+            width: sel ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(t['emoji']!, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                t['nombre']!,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: sel ? _orange : Colors.white,
+                ),
+              ),
+            ),
+            if (sel) const Icon(Icons.check_circle, size: 16, color: _orange),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ─── PASO 2: Productos ────────────────────────────────────────────────────
   Widget _step2() {
     final allP = ref.read(productsProvider).products;
     final filtered = _search.isEmpty
         ? allP
         : allP
-              .where(
-                (p) =>
-                    p.name.toLowerCase().contains(_search.toLowerCase()) ||
-                    p.categoryName.toLowerCase().contains(
-                      _search.toLowerCase(),
-                    ),
-              )
-              .toList();
+            .where(
+              (p) =>
+                  p.name.toLowerCase().contains(_search.toLowerCase()) ||
+                  p.categoryName
+                      .toLowerCase()
+                      .contains(_search.toLowerCase()),
+            )
+            .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'SELECCIONA LOS PRODUCTOS',
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Colors.white70,
-          ),
-        ),
+        _sectionLabel('SELECCIONA LOS PRODUCTOS'),
         const SizedBox(height: 4),
         Text(
           '${_selProd.length} producto(s) seleccionado(s)',
@@ -386,14 +386,14 @@ class _State extends ConsumerState<CreateEventScreen> {
             hintStyle: const TextStyle(color: Colors.white38),
             prefixIcon: const Icon(Icons.search, color: _orange),
             filled: true,
-            fillColor: const Color(0xFF1C1C2E),
+            fillColor: _card,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+              borderSide: const BorderSide(color: _border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+              borderSide: const BorderSide(color: _border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -413,77 +413,72 @@ class _State extends ConsumerState<CreateEventScreen> {
             ),
           )
         else
-          // Columna en lugar de ListView.builder para evitar scrollables anidados
-          Column(
-            children: filtered.map((p) {
-              final sel = _selProd.any((s) => s.id == p.id);
-              return GestureDetector(
-                onTap: () => setState(() {
-                  if (sel) {
-                    _selProd.removeWhere((s) => s.id == p.id);
-                  } else {
-                    _selProd.add(p);
-                  }
-                }),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: sel
-                        ? _orange.withAlpha(40)
-                        : const Color(0xFF1C1C2E),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: sel ? _orange : const Color(0xFF2A2A45),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        sel ? Icons.check_box : Icons.check_box_outline_blank,
-                        color: sel ? _orange : Colors.white38,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              p.name,
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              p.categoryName,
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: Colors.white54,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        '\$${p.price.toStringAsFixed(0)}',
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: _orange,
-                        ),
-                      ),
-                    ],
+          ...filtered.map((p) {
+            final sel = _selProd.any((s) => s.id == p.id);
+            return GestureDetector(
+              onTap: () => setState(() {
+                if (sel) {
+                  _selProd.removeWhere((s) => s.id == p.id);
+                } else {
+                  _selProd.add(p);
+                }
+              }),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: sel ? _orange.withAlpha(40) : _card,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: sel ? _orange : _border,
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+                child: Row(
+                  children: [
+                    Icon(
+                      sel ? Icons.check_box : Icons.check_box_outline_blank,
+                      color: sel ? _orange : Colors.white38,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.name,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            p.categoryName,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: Colors.white54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      r'$' + p.price.toStringAsFixed(0),
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
       ],
     );
   }
@@ -492,26 +487,20 @@ class _State extends ConsumerState<CreateEventScreen> {
   Widget _step3() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         // Banner
-        _card(
+        _cardWidget(
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'BANNER PROMOCIONAL',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white70,
-                ),
-              ),
+              _sectionLabel('BANNER PROMOCIONAL'),
               const SizedBox(height: 10),
               ElevatedButton.icon(
                 onPressed: () async {
-                  final url = await CloudinaryService.pickAndUploadImage(
-                    context,
-                  );
+                  final url =
+                      await CloudinaryService.pickAndUploadImage(context);
                   if (mounted && url != null) setState(() => _banner = url);
                 },
                 icon: const Icon(Icons.cloud_upload_outlined),
@@ -534,18 +523,12 @@ class _State extends ConsumerState<CreateEventScreen> {
         ),
         const SizedBox(height: 12),
         // Vigencia
-        _card(
+        _cardWidget(
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'VIGENCIA DE LA CAMPAÑA',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white70,
-                ),
-              ),
+              _sectionLabel('VIGENCIA DE LA CAMPAÑA'),
               const SizedBox(height: 10),
               SwitchListTile(
                 title: const Text(
@@ -597,31 +580,23 @@ class _State extends ConsumerState<CreateEventScreen> {
         ),
         const SizedBox(height: 12),
         // Resumen
-        _card(
+        _cardWidget(
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'RESUMEN FINAL',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white70,
-                ),
-              ),
-              const Divider(color: Color(0xFF2A2A45), height: 16),
-              _row(
-                'CAMPAÑA',
-                _titulo.text.isEmpty ? 'Sin título' : _titulo.text,
-              ),
-              _row(
-                'TIPO',
-                _tipos.firstWhere((t) => t['id'] == _tipo)['nombre']!,
-              ),
+              _sectionLabel('RESUMEN FINAL'),
+              const Divider(color: _border, height: 16),
+              _row('CAMPAÑA',
+                  _titulo.text.isEmpty ? 'Sin título' : _titulo.text),
+              _row('TIPO',
+                  _tipos.firstWhere((t) => t['id'] == _tipo)['nombre']!),
               _row('PRODUCTOS', '${_selProd.length} seleccionados'),
               _row(
                 'VIGENCIA',
-                _permanente ? 'Permanente' : '${_fmt(_inicio)} → ${_fmt(_fin)}',
+                _permanente
+                    ? 'Permanente'
+                    : '${_fmt(_inicio)} → ${_fmt(_fin)}',
               ),
             ],
           ),
@@ -635,7 +610,7 @@ class _State extends ConsumerState<CreateEventScreen> {
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        color: const Color(0xFF1C1C2E),
+        color: _card,
         child: Row(
           children: [
             TextButton(
@@ -649,12 +624,10 @@ class _State extends ConsumerState<CreateEventScreen> {
             if (_step > 0)
               TextButton.icon(
                 onPressed: () => setState(() => _step--),
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  size: 12,
-                  color: _orange,
-                ),
-                label: const Text('Anterior', style: TextStyle(color: _orange)),
+                icon: const Icon(Icons.arrow_back_ios_new,
+                    size: 12, color: _orange),
+                label:
+                    const Text('Anterior', style: TextStyle(color: _orange)),
               ),
             const SizedBox(width: 8),
             if (_step < 2)
@@ -664,9 +637,7 @@ class _State extends ConsumerState<CreateEventScreen> {
                   backgroundColor: _orange,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
+                      horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -683,9 +654,7 @@ class _State extends ConsumerState<CreateEventScreen> {
                   backgroundColor: _orange,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+                      horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -711,24 +680,33 @@ class _State extends ConsumerState<CreateEventScreen> {
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────────────
-  Widget _card(Widget child) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: const Color(0xFF1C1C2E),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFF2A2A45)),
-    ),
-    child: child,
-  );
+  Widget _cardWidget(Widget child) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _border),
+        ),
+        child: child,
+      );
+
+  Widget _sectionLabel(String t) => Text(
+        t,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Colors.white70,
+        ),
+      );
 
   Widget _label(String t) => Text(
-    t,
-    style: GoogleFonts.inter(
-      fontSize: 10,
-      fontWeight: FontWeight.w700,
-      color: Colors.white60,
-    ),
-  );
+        t,
+        style: GoogleFonts.inter(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: Colors.white60,
+        ),
+      );
 
   Widget _textInput(
     TextEditingController ctrl,
@@ -749,23 +727,21 @@ class _State extends ConsumerState<CreateEventScreen> {
         suffixText: suffix,
         prefixText: prefix,
         filled: true,
-        fillColor: const Color(0xFF1C1C2E),
+        fillColor: _card,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+          borderSide: const BorderSide(color: _border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+          borderSide: const BorderSide(color: _border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: _orange),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
     );
   }
@@ -776,9 +752,9 @@ class _State extends ConsumerState<CreateEventScreen> {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFF12121F),
+            color: _bg,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF2A2A45)),
+            border: Border.all(color: _border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -808,27 +784,27 @@ class _State extends ConsumerState<CreateEventScreen> {
       );
 
   Widget _row(String label, String value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 3),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: Colors.white38),
-        ),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Colors.white38),
             ),
-            overflow: TextOverflow.ellipsis,
-          ),
+            Flexible(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }
