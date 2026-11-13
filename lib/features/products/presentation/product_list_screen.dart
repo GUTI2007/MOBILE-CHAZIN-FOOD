@@ -483,14 +483,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                         onEdit: () => _navigateToForm(context, product: product),
                                         onDelete: () => _confirmDelete(context, product),
                                         onCreateEvent: () {
-                                          // Navegación a pantalla completa — elimina 100%
-                                          // los problemas de overlay/mouse_tracker/dialog.
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute<void>(
-                                              builder: (_) => CreateEventScreen(
-                                                linkedProduct: product,
-                                              ),
-                                            ),
+                                          showCreateEventModal(
+                                            context,
+                                            ref,
+                                            linkedProduct: product,
                                           );
                                         },
                                       ),
