@@ -1,0 +1,17 @@
+{
+  "name": "chazin-food-qa",
+  "version": "1.0.0",
+  "description": "QA Automation Suite para Chazin Food Mobile (Flutter Web) con Playwright",
+  "scripts": {
+    "audit": "node chazin-audit.js",
+    "audit:url": "node chazin-audit.js",
+    "install:browsers": "npx playwright install chromium",
+    "open:report": "start reporte-qa-chazin-mobile.html"
+  },
+  "keywords": ["qa", "playwright", "flutter", "chazin-food", "testing"],
+  "author": "Chazin Food Dev Team",
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.65.1"
+  }
+}
