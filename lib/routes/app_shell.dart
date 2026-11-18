@@ -70,6 +70,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ),
         child: BottomNavigationBar(
+          key: const Key('bottom_nav'),
           currentIndex: currentIndex,
           onTap: (index) => ref.read(appShellIndexProvider.notifier).state = index,
           type: BottomNavigationBarType.fixed,
@@ -79,18 +80,18 @@ class _AppShellState extends ConsumerState<AppShell> {
           unselectedFontSize: 11,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
+              icon: Icon(Icons.home_outlined, semanticLabel: 'Inicio'),
+              activeIcon: Icon(Icons.home_rounded, semanticLabel: 'Inicio'),
               label: 'Inicio',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.restaurant_menu_outlined),
-              activeIcon: Icon(Icons.restaurant_menu_rounded),
+              icon: Icon(Icons.restaurant_menu_outlined, semanticLabel: 'Productos'),
+              activeIcon: Icon(Icons.restaurant_menu_rounded, semanticLabel: 'Productos'),
               label: 'Productos',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.trending_up_rounded),
-              activeIcon: Icon(Icons.trending_up_rounded),
+              icon: Icon(Icons.trending_up_rounded, semanticLabel: 'Ventas'),
+              activeIcon: Icon(Icons.trending_up_rounded, semanticLabel: 'Ventas'),
               label: 'Ventas',
             ),
           ],

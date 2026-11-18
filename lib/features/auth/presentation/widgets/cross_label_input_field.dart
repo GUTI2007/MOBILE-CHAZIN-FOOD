@@ -119,7 +119,11 @@ class _CrossLabelInputFieldState extends State<CrossLabelInputField> {
                   ]
                 : [],
           ),
-          child: TextFormField(
+          child: Semantics(
+            label: widget.label,
+            textField: true,
+            child: TextFormField(
+            key: ValueKey('input_${widget.label.toLowerCase().replaceAll(' ', '_')}'),
             controller: widget.controller,
             focusNode: _focusNode,
             obscureText: widget.obscureText,
@@ -187,6 +191,7 @@ class _CrossLabelInputFieldState extends State<CrossLabelInputField> {
               ),
             ),
           ),
+          ), // cierre Semantics
         ),
       ],
     );

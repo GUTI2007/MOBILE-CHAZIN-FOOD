@@ -361,6 +361,7 @@ class _EventModalContentState extends ConsumerState<_EventModalContent> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: TextField(
+                  key: const Key('input_titulo_evento'),
                   controller: _tituloCtrl,
                   onChanged: (_) {
                     if (_errorTitulo != null) {
@@ -395,6 +396,7 @@ class _EventModalContentState extends ConsumerState<_EventModalContent> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: TextField(
+                    key: const Key('input_valor_evento'),
                     controller: _valorCtrl,
                     keyboardType: _tipo == 'topping_extra'
                         ? TextInputType.text
@@ -649,6 +651,7 @@ class _EventModalContentState extends ConsumerState<_EventModalContent> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: SizedBox(
+                  key: const Key('btn_publicar_campana'),
                   height: 52,
                   child: ElevatedButton(
                     onPressed: _saving ? null : _guardar,

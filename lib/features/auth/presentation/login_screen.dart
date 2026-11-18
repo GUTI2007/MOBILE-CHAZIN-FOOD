@@ -432,99 +432,104 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     const SizedBox(height: 28),
 
                                     // Botón Iniciar Sesión con FittedBox para prevenir desbordamientos
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: 54,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          color: brandColor,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: brandColor.withValues(
-                                                alpha: 0.35,
+                                    Semantics(
+                                      label: 'Iniciar Sesión',
+                                      button: true,
+                                      child: SizedBox(
+                                        key: const Key('btn_login'),
+                                        width: double.infinity,
+                                        height: 54,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            color: brandColor,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: brandColor.withValues(
+                                                  alpha: 0.35,
+                                                ),
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 5),
                                               ),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 5),
-                                            ),
-                                          ],
-                                        ),
-                                        child: ElevatedButton(
-                                          onPressed: isLoading
-                                              ? null
-                                              : _handleLogin,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.transparent,
-                                            shadowColor: Colors.transparent,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                            ),
+                                            ],
                                           ),
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: isLoading
-                                                ? Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      const SizedBox(
-                                                        width: 20,
-                                                        height: 20,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              color:
-                                                                  Colors.white,
-                                                              strokeWidth: 2.5,
-                                                            ),
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Text(
-                                                        'Ingresando...',
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                              fontSize: 16,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color:
-                                                                  Colors.white,
-                                                            ),
-                                                      ),
-                                                    ],
-                                                  )
-                                                : Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      const Icon(
-                                                        Icons.login_rounded,
-                                                        size: 20,
-                                                        color: Colors.white,
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      Text(
-                                                        'Iniciar Sesión',
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                              fontSize: 16,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color:
-                                                                  Colors.white,
-                                                            ),
-                                                      ),
-                                                    ],
-                                                  ),
+                                          child: ElevatedButton(
+                                            onPressed: isLoading
+                                                ? null
+                                                : _handleLogin,
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.transparent,
+                                              shadowColor: Colors.transparent,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                            ),
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: isLoading
+                                                  ? Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        const SizedBox(
+                                                          width: 20,
+                                                          height: 20,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                color:
+                                                                    Colors.white,
+                                                                strokeWidth: 2.5,
+                                                              ),
+                                                        ),
+                                                        const SizedBox(width: 12),
+                                                        Text(
+                                                          'Ingresando...',
+                                                          style:
+                                                              GoogleFonts.poppins(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color:
+                                                                    Colors.white,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    )
+                                                  : Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.login_rounded,
+                                                          size: 20,
+                                                          color: Colors.white,
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Text(
+                                                          'Iniciar Sesión',
+                                                          style:
+                                                              GoogleFonts.poppins(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color:
+                                                                    Colors.white,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
+                                    ), // cierre Semantics btn_login
                                     const SizedBox(height: 20),
 
                                     // Olvidaste Contraseña

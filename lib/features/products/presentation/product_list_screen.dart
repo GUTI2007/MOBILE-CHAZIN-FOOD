@@ -2443,7 +2443,11 @@ class _FigmaProductCard extends StatelessWidget {
           // ─── Crear Evento Button ───
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: Material(
+            child: Semantics(
+              label: 'Crear Evento',
+              button: true,
+              child: Material(
+              key: const Key('btn_crear_evento'),
               color: Colors.transparent,
               child: InkWell(
                 onTap: onCreateEvent,
@@ -2480,7 +2484,8 @@ class _FigmaProductCard extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
+            ), // cierre Material (key btn_crear_evento)
+            ), // cierre Semantics
           ),
 
           // ─── Actions Row ───
