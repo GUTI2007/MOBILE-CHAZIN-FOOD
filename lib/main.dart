@@ -21,30 +21,11 @@ void main() {
     DeviceOrientation.portraitDown,
   ]);
 
+  // El clamping de viewInsets negativos se hace en el builder de MaterialApp
+  // dentro de ChazinFoodApp (app.dart). No se necesita ningún wrapper aquí.
   runApp(
     const ProviderScope(
-      // MediaQuery.fromView envuelve la app con datos de ventana seguros,
-      // evitando la excepción _viewInsets.isNonNegative en Flutter Web
-      // cuando el viewport cambia de tamaño dinámicamente.
-      child: _SafeMediaQueryWrapper(
-        child: ChazinFoodApp(),
-      ),
+      child: ChazinFoodApp(),
     ),
   );
-}
-
-/// Envuelve la app con un MediaQuery derivado de la vista principal del motor,
-/// garantizando que viewInsets, viewPadding y padding siempre sean >= 0.
-/// Esto previene la aserción _viewInsets.isNonNegative en Flutter Web.
-class _SafeMediaQueryWrapper extends StatelessWidget {
-  final Widget child;
-  const _SafeMediaQueryWrapper({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return MediaQuery.fromView(
-      view: View.of(context),
-      child: child,
-    );
-  }
 }
