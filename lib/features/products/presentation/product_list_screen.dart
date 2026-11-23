@@ -168,8 +168,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         showBrandHeader: true,
         showDrawerMenu: true,
         showDarkModeToggle: true,
-        showRefresh: true,
-        onRefresh: () => ref.read(productsProvider.notifier).loadProducts(),
+        showRefresh: false,
       ),
       body: state.isLoading
           ? const LoadingShimmer(itemCount: 4, isList: true)

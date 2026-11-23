@@ -239,6 +239,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     // ─── Ventas Pendientes ───
                     _buildVentasPendientes(isDark),
                     const SizedBox(height: 24),
+                    // ─── Devoluciones Pendientes ───
+                    _buildDevolucionesPendientes(isDark),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -588,7 +591,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     width: 6,
                                     height: 6,
                                     decoration: const BoxDecoration(
-                                      color: Color(0xFFEF4444),
+                                      color: Color(0xFF4F46E5),
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -617,9 +620,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _chartLegendItem('Compras', const Color(0xFF10B981)),
+              _chartLegendItem('Ventas', const Color(0xFF10B981)),
               const SizedBox(width: 24),
-              _chartLegendItem('Ventas', const Color(0xFFEF4444)),
+              _chartLegendItem('Compras', const Color(0xFF4F46E5)),
             ],
           ),
         ],
@@ -1051,50 +1054,61 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     border: isDark ? null : Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                o.id,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFEF3C7),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'Pendiente',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF92400E),
+                      // ── Left side — ID + badge + cliente (bounded) ──
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    o.id,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            // hora exacta del timestamp del backend (HH:mm)
-                            '${o.cliente} • ${o.hora}',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: Colors.grey,
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    'Pendiente',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF92400E),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              '${o.cliente.length > 20 ? '${o.cliente.substring(0, 20)}…' : o.cliente} • ${o.hora}',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
+                      // ── Right side — amount ──
                       Text(
                         Formatters.currency(o.total),
                         style: GoogleFonts.outfit(
@@ -1107,6 +1121,119 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 );
               }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Devoluciones Pendientes ─────────────────────────────────────────────
+  Widget _buildDevolucionesPendientes(bool isDark) {
+    final ordersState = ref.watch(ordersProvider);
+
+    // Órdenes marcadas con estado 'devolucion' o similares del backend
+    final devoluciones = ordersState.orders
+        .where((o) =>
+            o.estado == 'devolucion' ||
+            o.estado == 'devolucion_pendiente' ||
+            o.estado == 'retorno')
+        .toList();
+
+    final count = devoluciones.length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: isDark
+            ? Border.all(color: Colors.white10)
+            : Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withAlpha(5),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: count > 0
+                  ? const Color(0xFFFEF3C7)
+                  : const Color(0xFFD1FAE5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.assignment_return_rounded,
+              color: count > 0
+                  ? const Color(0xFF92400E)
+                  : const Color(0xFF16A34A),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Devoluciones Pendientes',
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                ordersState.isLoading
+                    ? Text(
+                        'Cargando...',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: isDark ? Colors.white38 : AppColors.grey400,
+                        ),
+                      )
+                    : Text(
+                        count == 0
+                            ? 'Sin devoluciones pendientes en este momento'
+                            : count == 1
+                                ? '1 devolución pendiente de gestión'
+                                : '$count devoluciones pendientes de gestión',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: count > 0
+                              ? const Color(0xFF92400E)
+                              : (isDark
+                                  ? Colors.white60
+                                  : const Color(0xFF166534)),
+                        ),
+                      ),
+              ],
+            ),
+          ),
+          if (!ordersState.isLoading && count > 0)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$count',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF92400E),
+                ),
+              ),
             ),
         ],
       ),
@@ -1218,7 +1345,7 @@ class _LineChartPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final paintLineEgresos = Paint()
-      ..color = const Color(0xFFEF4444)
+      ..color = const Color(0xFF4F46E5)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
@@ -1255,7 +1382,7 @@ class _LineChartPainter extends CustomPainter {
       }
       fillPathEgresos.lineTo(egresosPoints.last.dx, size.height);
       fillPathEgresos.close();
-      canvas.drawPath(fillPathEgresos, Paint()..color = const Color(0xFFEF4444).withAlpha(16)..style = PaintingStyle.fill);
+      canvas.drawPath(fillPathEgresos, Paint()..color = const Color(0xFF4F46E5).withAlpha(16)..style = PaintingStyle.fill);
     }
 
     // Selection guide & highlight dots
@@ -1277,7 +1404,7 @@ class _LineChartPainter extends CustomPainter {
       canvas.drawCircle(Offset(selX, ingresosY), 3.5, Paint()..color = const Color(0xFF10B981));
 
       canvas.drawCircle(Offset(selX, egresosY), 5.5, Paint()..color = Colors.white);
-      canvas.drawCircle(Offset(selX, egresosY), 3.5, Paint()..color = const Color(0xFFEF4444));
+      canvas.drawCircle(Offset(selX, egresosY), 3.5, Paint()..color = const Color(0xFF4F46E5));
     }
   }
 

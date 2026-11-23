@@ -564,10 +564,6 @@ class _PaymentStep extends ConsumerWidget {
         children: [
           Text(AppStrings.paymentMethod, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppDimens.lg),
-          _paymentOption(context, ref, PaymentMethod.cash, Icons.money_rounded, AppStrings.cash, AppColors.success),
-          const SizedBox(height: AppDimens.md),
-          _paymentOption(context, ref, PaymentMethod.card, Icons.credit_card_rounded, AppStrings.card, AppColors.info),
-          const SizedBox(height: AppDimens.md),
           _paymentOption(context, ref, PaymentMethod.transfer, Icons.account_balance_rounded, AppStrings.transfer, AppColors.accent),
           const Spacer(),
           Container(

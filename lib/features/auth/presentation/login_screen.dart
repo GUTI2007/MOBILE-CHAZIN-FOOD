@@ -155,7 +155,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         : MainAxisAlignment.center,
                     children: [
                       if (!isKeyboardOpen) ...[
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 8),
                         // ─── Logo Chazin Food personalizado con círculos concéntricos y cuadrícula detrás ───
                         Stack(
                           alignment: Alignment.center,
@@ -163,8 +163,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           children: [
                             // Cuadrícula de puntos grises posicionado ÚNICAMENTE en la zona del logotipo
                             SizedBox(
-                              width: 320,
-                              height: 130,
+                              width: 260,
+                              height: 100,
                               child: CustomPaint(
                                 painter: _DotGridBehindLogoPainter(
                                   color: const Color(0xFFE2E8F0),
@@ -173,8 +173,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             ),
                             // Círculo concéntrico exterior difuminado (RadialGradient idéntico al fondo)
                             Container(
-                              width: 280,
-                              height: 280,
+                              width: 200,
+                              height: 200,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
@@ -186,14 +186,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 ),
                               ),
                             ),
-                            // Círculo del logotipo principal (Ajustado a 120) con el Gorro de Chef en la parte superior derecha
+                            // Círculo del logotipo principal (reducido a 100) con el Gorro de Chef
                             Stack(
                               clipBehavior: Clip.none,
                               alignment: Alignment.center,
                               children: [
                                 Container(
-                                  width: 136,
-                                  height: 136,
+                                  width: 100,
+                                  height: 100,
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     shape: BoxShape.circle,
@@ -215,14 +215,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     child: ClipOval(
                                       child: Image.asset(
                                         'assets/chazin_logo.png',
-                                        width: 92,
-                                        height: 92,
+                                        width: 68,
+                                        height: 68,
                                         fit: BoxFit.cover,
                                         errorBuilder:
                                             (context, error, stackTrace) {
                                               return const Icon(
                                                 Icons.restaurant_rounded,
-                                                size: 48,
+                                                size: 36,
                                                 color: brandColor,
                                               );
                                             },
@@ -245,8 +245,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       );
                                     },
                                     child: Container(
-                                      width: 36,
-                                      height: 36,
+                                      width: 30,
+                                      height: 30,
                                       decoration: const BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: brandColor,
@@ -268,14 +268,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                       ],
 
                       // Título de la App (Poppins con color exacto)
                       Text(
                         'Chazin Food',
                         style: GoogleFonts.poppins(
-                          fontSize: 42,
+                          fontSize: 34,
                           fontWeight: FontWeight.bold,
                           color: brandColor,
                           letterSpacing: -0.5,
@@ -308,7 +308,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
                       // ─── Card Principal con Formulario ───
                       Container(
@@ -370,7 +370,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24.0,
-                                vertical: 28.0,
+                                vertical: 20.0,
                               ),
                               child: Form(
                                 key: _formKey,

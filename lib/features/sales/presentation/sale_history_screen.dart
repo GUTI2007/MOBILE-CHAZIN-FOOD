@@ -90,8 +90,7 @@ class _SaleHistoryScreenState extends ConsumerState<SaleHistoryScreen> {
     return Scaffold(
       appBar: CommonAppBar(
         title: AppStrings.saleHistory,
-        showRefresh: true,
-        onRefresh: () => ref.read(salesProvider.notifier).loadSales(),
+        showRefresh: false,
       ),
       body: state.isLoading
           ? const LoadingShimmer(itemCount: 8)
@@ -545,7 +544,11 @@ class _SaleCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        sale.clientName,
+                        sale.clientName.length > 30
+                            ? '${sale.clientName.substring(0, 30)}…'
+                            : sale.clientName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 2),
