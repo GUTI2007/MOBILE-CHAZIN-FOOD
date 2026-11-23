@@ -24,20 +24,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int? _activeTooltipCount;
   int? _selectedMonthIndex;
 
-  // PerÃ­odo seleccionado para filtro histÃ³rico
+  // Período seleccionado para filtro histórico
   String _periodoSeleccionado = 'Mes Actual';
   bool _showKpiDash = true;
 
   static const List<String> _periodos = [
     'Hoy',
-    '7 DÃ­as',
+    '7 Días',
     'Mes Actual',
     'Mes Anterior',
-    'Ãšltimos 3 Meses',
-    'Ãšltimos 6 Meses',
-    'AÃ±o Actual',
-    'AÃ±o Anterior',
-    'HistÃ³rico',
+    'Últimos 3 Meses',
+    'Últimos 6 Meses',
+    'Año Actual',
+    'Año Anterior',
+    'Histórico',
     '2026',
   ];
 
@@ -83,7 +83,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: FadeInAnimation(child: w),
                   ),
                   children: [
-                    // â”€â”€â”€ Header title â”€â”€â”€
+                    // ─── Header title ───
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +112,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // BotÃ³n toggle KPIs
+                        // Botón toggle KPIs
                         GestureDetector(
                           onTap: () => setState(() => _showKpiDash = !_showKpiDash),
                           child: Container(
@@ -134,7 +134,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // BotÃ³n dedicado de filtro perÃ­odo
+                        // Botón dedicado de filtro período
                         GestureDetector(
                           onTap: () => _showPeriodPicker(context, isDark),
                           child: Container(
@@ -168,7 +168,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // â”€â”€â”€ Metric Cards (2x2 Grid) â€” condicional al toggle â”€â”€â”€
+                    // ─── Metric Cards (2x2 Grid) — condicional al toggle ───
                     if (_showKpiDash) ...[
                       Row(
                         children: [
@@ -179,9 +179,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               iconBg: const Color(0xFFD1FAE5),
                               label: _periodoSeleccionado == 'Mes Actual'
                                   ? 'Ventas del Mes'
-                                  : 'Ventas del PerÃ­odo',
+                                  : 'Ventas del Período',
                               value: Formatters.currency(stats.ventasTotal),
-                              trendText: '${stats.ventasVariacion >= 0 ? 'â†— +' : 'â†˜ '}${stats.ventasVariacion.toStringAsFixed(1)}%',
+                              trendText: '${stats.ventasVariacion >= 0 ? '\u2197 +' : '\u2198 '}${stats.ventasVariacion.toStringAsFixed(1)}%',
                               trendColor: const Color(0xFF10B981),
                               isDark: isDark,
                             ),
@@ -194,7 +194,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               iconBg: const Color(0xFFDBEAFE),
                               label: 'Total Pedidos',
                               value: '${stats.pedidosTotal}',
-                              trendText: '${stats.pedidosVariacion >= 0 ? 'â†— +' : 'â†˜ '}${stats.pedidosVariacion.toStringAsFixed(1)}%',
+                              trendText: '${stats.pedidosVariacion >= 0 ? '\u2197 +' : '\u2198 '}${stats.pedidosVariacion.toStringAsFixed(1)}%',
                               trendColor: const Color(0xFF3B82F6),
                               isDark: isDark,
                             ),
@@ -211,7 +211,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               iconBg: const Color(0xFFEDE9FE),
                               label: 'Clientes Activos',
                               value: '${stats.clientesActivos}',
-                              trendText: '${stats.clientesVariacion >= 0 ? 'â†— +' : 'â†˜ '}${stats.clientesVariacion.toStringAsFixed(1)}%',
+                              trendText: '${stats.clientesVariacion >= 0 ? '\u2197 +' : '\u2198 '}${stats.clientesVariacion.toStringAsFixed(1)}%',
                               trendColor: const Color(0xFF10B981),
                               isDark: isDark,
                             ),
@@ -222,7 +222,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               icon: Icons.inventory_2_outlined,
                               iconColor: const Color(0xFFEF4444),
                               iconBg: const Color(0xFFFEE2E2),
-                              label: 'Stock CrÃ­tico',
+                              label: 'Stock Crítico',
                               value: '${dashboardState.alertasStock.where((a) => a.stock < 10).length}',
                               trendText: 'Insumos < 10 uds',
                               trendColor: const Color(0xFFEF4444),
@@ -235,22 +235,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
 
 
-                    // â”€â”€â”€ Ventas y Compras Chart â”€â”€â”€
+                    // ─── Ventas y Compras Chart ───
                     _buildVentasComprasChart(isDark, dashboardState.ventasChart),
                     const SizedBox(height: 24),
 
-                    // â”€â”€â”€ Productos MÃ¡s Vendidos Chart â”€â”€â”€
+                    // ─── Productos Más Vendidos Chart ───
                     _buildProductosMasVendidos(isDark, dashboardState.productosPopulares),
                     const SizedBox(height: 24),
 
-                    // â”€â”€â”€ Alertas de Stock â”€â”€â”€
+                    // ─── Alertas de Stock ───
                     _buildAlertasDeStock(isDark, dashboardState.alertasStock),
                     const SizedBox(height: 24),
 
-                    // â”€â”€â”€ Ventas Pendientes â”€â”€â”€
+                    // ─── Ventas Pendientes ───
                     _buildVentasPendientes(isDark),
                     const SizedBox(height: 24),
-                    // â”€â”€â”€ Devoluciones Pendientes â”€â”€â”€
+                    // ─── Devoluciones Pendientes ───
                     _buildDevolucionesPendientes(isDark),
                     const SizedBox(height: 24),
                   ],
@@ -295,7 +295,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Filtrar por perÃ­odo',
+                  'Filtrar por período',
                   style: GoogleFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -665,7 +665,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // Horizonal Bar Chart for "Productos MÃ¡s Vendidos"
+  // Horizonal Bar Chart for "Productos Más Vendidos"
   Widget _buildProductosMasVendidos(bool isDark, List<PopularProductItem> popularItems) {
     final products = popularItems.isNotEmpty
         ? popularItems.map((p) => {'name': p.nombre, 'val': p.ventas}).toList()
@@ -698,7 +698,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Productos MÃ¡s Vendidos',
+            'Productos Más Vendidos',
             style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -843,7 +843,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // Stock alerts â€” solo insumos con stock < 10 unidades (regla estricta de stock crÃ­tico)
+  // Stock alerts — solo insumos con stock < 10 unidades (regla estricta de stock crítico)
   Widget _buildAlertasDeStock(bool isDark, List<StockAlertItem> stockAlerts) {
     // Filtrar: solo los que tengan stock estrictamente menor a 10
     final criticos = stockAlerts.where((a) => a.stock < 10).toList();
@@ -871,7 +871,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Stock CrÃ­tico (< 10 unidades)',
+                'Stock Crítico (< 10 unidades)',
                 style: GoogleFonts.outfit(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -904,7 +904,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 20),
                   const SizedBox(width: 10),
                   Text(
-                    'Inventario al dÃ­a â€” sin alertas crÃ­ticas',
+                    'Inventario al día — sin alertas críticas',
                     style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white60 : const Color(0xFF166534)),
                   ),
                 ],
@@ -938,7 +938,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               ),
                             ),
                             Text(
-                              '${a.stock} uds disponibles (mÃ­n. ${a.minimo})',
+                              '${a.stock} uds disponibles (mín. ${a.minimo})',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 color: isDark ? const Color(0xFFF87171) : const Color(0xFF991B1B),
@@ -957,7 +957,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         child: Text(
-                          'âš  CrÃ­tico',
+                          '\u26A0 Crítico',
                           style: GoogleFonts.inter(
                             color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
                             fontSize: 11,
@@ -975,11 +975,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // Ventas Pendientes â€” solo las Ã³rdenes con estado 'pendiente' del backend, con hora exacta
+  // Ventas Pendientes — solo las órdenes con estado 'pendiente' del backend, con hora exacta
   Widget _buildVentasPendientes(bool isDark) {
     final ordersState = ref.watch(ordersProvider);
 
-    // Filtrar SOLO las Ã³rdenes con estado pendiente, ordenadas por hora desc
+    // Filtrar SOLO las órdenes con estado pendiente, ordenadas por hora desc
     final pendientes = ordersState.orders
         .where((o) => o.estado == 'pendiente')
         .take(5)
@@ -1020,7 +1020,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ref.read(appShellIndexProvider.notifier).state = 2;
                 },
                 child: Text(
-                  'Ver todo â€º',
+                  'Ver todo \u203A',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: AppColors.primary,
@@ -1067,7 +1067,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // â”€â”€ Left side â€” ID + badge + cliente (bounded) â”€â”€
+                      // ── Left side — ID + badge + cliente (bounded) ──
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1107,7 +1107,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${o.cliente.length > 20 ? '${o.cliente.substring(0, 20)}â€¦' : o.cliente} â€¢ ${o.hora}',
+                              '${o.cliente.length > 20 ? '${o.cliente.substring(0, 20)}...' : o.cliente} \u2022 ${o.hora}',
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                               style: GoogleFonts.inter(
@@ -1119,7 +1119,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // â”€â”€ Right side â€” amount â”€â”€
+                      // ── Right side — amount ──
                       Text(
                         Formatters.currency(o.total),
                         style: GoogleFonts.outfit(
@@ -1138,7 +1138,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // â”€â”€â”€ Devoluciones Pendientes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Devoluciones Pendientes ───
   Widget _buildDevolucionesPendientes(bool isDark) {
     final devState = ref.watch(devolucionesProvider);
 
@@ -1209,8 +1209,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         count == 0
                             ? 'Sin devoluciones pendientes en este momento'
                             : count == 1
-                                ? '1 devoluciÃ³n pendiente de gestiÃ³n'
-                                : '$count devoluciones pendientes de gestiÃ³n',
+                                ? '1 devolución pendiente de gestión'
+                                : '$count devoluciones pendientes de gestión',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           color: count > 0
@@ -1246,7 +1246,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-// â”€â”€â”€ Custom Line Chart Painter â”€â”€â”€
+// ─── Custom Line Chart Painter ───
 class _LineChartPainter extends CustomPainter {
   final List<VentasChartData> data;
   final bool isDark;

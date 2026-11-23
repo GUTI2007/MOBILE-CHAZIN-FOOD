@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -41,11 +42,16 @@ class ApiClient {
         baseUrl: url,
         connectTimeout: connectTimeout,
         receiveTimeout: receiveTimeout,
+        responseType: ResponseType.json,
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json; charset=utf-8',
           'X-Content-Type-Options': 'nosniff',
           'X-Frame-Options': 'DENY',
+        },
+        responseDecoder: (responseBytes, options, responseBody) {
+          // Asegura decodificación UTF-8 robusta de las respuestas del backend
+          return utf8.decode(responseBytes, allowMalformed: true);
         },
       ),
     );

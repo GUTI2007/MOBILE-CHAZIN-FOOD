@@ -1,6 +1,6 @@
 ﻿import 'product_model.dart';
 
-/// MÃ©todo de pago
+/// Método de pago
 enum PaymentMethod { cash, card, transfer }
 
 /// Estado de la venta
@@ -153,7 +153,7 @@ class Sale {
     final start = '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
     if (endAt != null) {
       final end = '${endAt!.hour.toString().padLeft(2, '0')}:${endAt!.minute.toString().padLeft(2, '0')}';
-      return '$start â€“ $end';
+      return '$start \u2013 $end';
     }
     return start;
   }
@@ -189,8 +189,8 @@ class Sale {
         case 'anulada':
         case 'anulado':
           return SaleStatus.cancelled;
-        // Backend states: 'Completada', 'Listo', 'En PreparaciÃ³n', 'En Cocina',
-        // 'ENTREGADO', 'LISTO', 'PREPARANDO', 'pagado', etc. â†’ completed
+        // Backend states: 'Completada', 'Listo', 'En Preparación', 'En Cocina',
+        // 'ENTREGADO', 'LISTO', 'PREPARANDO', 'pagado', etc. -> completed
         default:
           return SaleStatus.completed;
       }
