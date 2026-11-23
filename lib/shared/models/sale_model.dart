@@ -1,4 +1,4 @@
-﻿import 'product_model.dart';
+import 'product_model.dart';
 
 /// Método de pago
 enum PaymentMethod { cash, card, transfer }
@@ -14,10 +14,7 @@ class CartItem {
   final Product product;
   int quantity;
 
-  CartItem({
-    required this.product,
-    this.quantity = 1,
-  });
+  CartItem({required this.product, this.quantity = 1});
 
   double get subtotal => product.price * quantity;
 }
@@ -46,14 +43,25 @@ class SaleDetail {
     return SaleDetail(
       id: (json['id'] ?? json['idDetalleVenta'] ?? json['idVariante'] ?? json['_id'])?.toString() ?? '',
       productId: (json['idVariante'] ?? json['productId'] ?? json['productoId'] ?? json['producto'])?.toString() ?? '',
-      productName: json['nombre']?.toString() ?? json['productName']?.toString() ?? json['nombreProducto']?.toString() ?? json['productoNombre']?.toString() ?? '',
+      productName: json['nombre']?.toString() ??
+          json['productName']?.toString() ??
+          json['nombreProducto']?.toString() ??
+          json['productoNombre']?.toString() ??
+          '',
       unitPrice: (json['precioUnitario'] ?? json['unitPrice'] ?? json['precio'] ?? 0).toDouble(),
       quantity: (json['cantidad'] ?? json['quantity'] ?? 1).toInt(),
       subtotal: (json['total'] ?? json['subtotal'] ?? 0).toDouble(),
-      addOns: (json['adiciones'] as List<dynamic>?)?.map((a) {
-        if (a is Map) return a['nombre']?.toString() ?? '';
-        return a.toString();
-      }).where((s) => s.isNotEmpty).toList() ?? (json['addOns'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      addOns: (json['adiciones'] as List<dynamic>?)
+              ?.map((a) {
+                if (a is Map) return a['nombre']?.toString() ?? '';
+                return a.toString();
+              })
+              .where((s) => s.isNotEmpty)
+              .toList() ??
+          (json['addOns'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
     );
   }
 
@@ -105,7 +113,7 @@ class Sale {
   String get paymentMethodName {
     switch (paymentMethod) {
       case PaymentMethod.cash:
-        return 'Efectivo';
+        return 'Transferencia';
       case PaymentMethod.card:
         return 'Tarjeta';
       case PaymentMethod.transfer:
@@ -150,9 +158,11 @@ class Sale {
 
   /// Formatted time range
   String get formattedTimeRange {
-    final start = '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
+    final start =
+        '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
     if (endAt != null) {
-      final end = '${endAt!.hour.toString().padLeft(2, '0')}:${endAt!.minute.toString().padLeft(2, '0')}';
+      final end =
+          '${endAt!.hour.toString().padLeft(2, '0')}:${endAt!.minute.toString().padLeft(2, '0')}';
       return '$start \u2013 $end';
     }
     return start;
@@ -164,11 +174,14 @@ class Sale {
 
   factory Sale.fromJson(Map<String, dynamic> json) {
     PaymentMethod parsePaymentMethod(String? pm) {
-      if (pm == null) return PaymentMethod.cash;
+      if (pm == null) return PaymentMethod.transfer;
       switch (pm.toLowerCase()) {
         case 'card':
         case 'tarjeta':
           return PaymentMethod.card;
+        case 'cash':
+        case 'efectivo':
+          return PaymentMethod.transfer;
         case 'transfer':
         case 'transferencia':
           return PaymentMethod.transfer;
@@ -212,7 +225,11 @@ class Sale {
     }
 
     // Backend returns 'productos' array; also check legacy field names
-    final rawDetails = json['productos'] ?? json['details'] ?? json['detalles'] ?? json['items'] ?? [];
+    final rawDetails = json['productos'] ??
+        json['details'] ??
+        json['detalles'] ??
+        json['items'] ??
+        [];
     List<SaleDetail> detailsList = [];
     if (rawDetails is List) {
       detailsList = rawDetails
@@ -231,17 +248,36 @@ class Sale {
     return Sale(
       id: (json['id'] ?? json['idVenta'] ?? json['_id'])?.toString() ?? '',
       clientId: (json['idCliente'] ?? json['clientId'] ?? json['clienteId'])?.toString() ?? '',
-      clientName: json['clienteNombre']?.toString() ?? json['cliente']?.toString() ?? json['clientName']?.toString() ?? json['nombreCliente']?.toString() ?? 'Cliente General',
+      clientName: json['clienteNombre']?.toString() ??
+          json['cliente']?.toString() ??
+          json['clientName']?.toString() ??
+          json['nombreCliente']?.toString() ??
+          'Cliente General',
       details: detailsList,
       subtotal: (json['subtotal'] ?? json['montoTotal'] ?? 0).toDouble(),
-      discount: (json['descuentoAplicado'] ?? json['montoDescuento'] ?? json['discount'] ?? json['descuento'] ?? 0).toDouble(),
+      discount: (json['descuentoAplicado'] ??
+              json['montoDescuento'] ??
+              json['discount'] ??
+              json['descuento'] ??
+              0)
+          .toDouble(),
       total: (json['total'] ?? json['montoTotal'] ?? json['totalVenta'] ?? 0).toDouble(),
-      paymentMethod: parsePaymentMethod(json['metodoPago']?.toString() ?? json['paymentMethod']?.toString()),
-      status: parseStatus(json['estado']?.toString() ?? json['estadoEntrega']?.toString() ?? json['status']?.toString()),
+      paymentMethod: parsePaymentMethod(
+        json['metodoPago']?.toString() ?? json['paymentMethod']?.toString(),
+      ),
+      status: parseStatus(
+        json['estado']?.toString() ??
+            json['estadoEntrega']?.toString() ??
+            json['status']?.toString(),
+      ),
       createdAt: parseDate(json),
       endAt: null,
-      deliveryType: parseDelivery(json['tipoEntrega']?.toString() ?? json['deliveryType']?.toString()),
-      notes: json['especificaciones']?.toString() ?? json['observaciones']?.toString() ?? json['notes']?.toString(),
+      deliveryType: parseDelivery(
+        json['tipoEntrega']?.toString() ?? json['deliveryType']?.toString(),
+      ),
+      notes: json['especificaciones']?.toString() ??
+          json['observaciones']?.toString() ??
+          json['notes']?.toString(),
     );
   }
 
@@ -263,4 +299,3 @@ class Sale {
     };
   }
 }
-
