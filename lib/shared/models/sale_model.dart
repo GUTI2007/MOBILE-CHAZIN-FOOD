@@ -1,6 +1,6 @@
-import 'product_model.dart';
+﻿import 'product_model.dart';
 
-/// Método de pago
+/// MÃ©todo de pago
 enum PaymentMethod { cash, card, transfer }
 
 /// Estado de la venta
@@ -153,7 +153,7 @@ class Sale {
     final start = '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
     if (endAt != null) {
       final end = '${endAt!.hour.toString().padLeft(2, '0')}:${endAt!.minute.toString().padLeft(2, '0')}';
-      return '$start – $end';
+      return '$start â€“ $end';
     }
     return start;
   }
@@ -173,7 +173,7 @@ class Sale {
         case 'transferencia':
           return PaymentMethod.transfer;
         default:
-          return PaymentMethod.cash;
+          return PaymentMethod.transfer;
       }
     }
 
@@ -189,8 +189,8 @@ class Sale {
         case 'anulada':
         case 'anulado':
           return SaleStatus.cancelled;
-        // Backend states: 'Completada', 'Listo', 'En Preparación', 'En Cocina',
-        // 'ENTREGADO', 'LISTO', 'PREPARANDO', 'pagado', etc. → completed
+        // Backend states: 'Completada', 'Listo', 'En PreparaciÃ³n', 'En Cocina',
+        // 'ENTREGADO', 'LISTO', 'PREPARANDO', 'pagado', etc. â†’ completed
         default:
           return SaleStatus.completed;
       }
@@ -263,3 +263,4 @@ class Sale {
     };
   }
 }
+

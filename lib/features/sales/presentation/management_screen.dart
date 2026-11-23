@@ -155,20 +155,11 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
   }
 
   List<PaymentMethodShare> _getPaymentMethodsData(List<Order> filtered) {
-    Map<String, double> totals = {'Efectivo': 0.0, 'Tarjeta': 0.0};
-    double totalAll = 0.0;
-    for (var o in filtered) {
-      String key = o.metodoPago == 'efectivo' ? 'Efectivo' : 'Tarjeta';
-      totals[key] = (totals[key] ?? 0.0) + o.total;
-      totalAll += o.total;
-    }
+    double totalAll = filtered.fold(0.0, (sum, o) => sum + o.total);
     if (totalAll == 0.0) {
-      return [
-        PaymentMethodShare(metodo: 'Efectivo', porcentaje: 50.0),
-        PaymentMethodShare(metodo: 'Tarjeta', porcentaje: 50.0),
-      ];
+      return [PaymentMethodShare(metodo: 'Transferencia', porcentaje: 100.0)];
     }
-    return totals.entries.map((e) => PaymentMethodShare(metodo: e.key, porcentaje: (e.value / totalAll) * 100)).toList();
+    return [PaymentMethodShare(metodo: 'Transferencia', porcentaje: 100.0)];
   }
 
   @override
@@ -710,8 +701,6 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                               style: TextStyle(fontSize: 13, color: textPrimary),
                               items: const [
                                 DropdownMenuItem(value: 'todos', child: Text('Todos')),
-                                DropdownMenuItem(value: 'efectivo', child: Text('Efectivo')),
-                                DropdownMenuItem(value: 'tarjeta', child: Text('Tarjeta')),
                                 DropdownMenuItem(value: 'transferencia', child: Text('Transferencia')),
                               ],
                               onChanged: (val) {
@@ -821,11 +810,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
 
   // --- Order card item in Pedidos tab (Capture 2 details) ---
   Widget _orderCard(Order order, Color cardColor, Color textPrimary, Color textSecondary, Color borderColor, bool isDark) {
-    String paymentLabel = order.metodoPago == 'efectivo'
-        ? 'Efectivo'
-        : order.metodoPago == 'tarjeta'
-            ? 'Tarjeta'
-            : 'Transferencia';
+    String paymentLabel = 'Transferencia';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -1055,11 +1040,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
     if (paymentCounts.isNotEmpty) {
       var topPaymentEntry = paymentCounts.entries.reduce((a, b) => a.value > b.value ? a : b);
       double pct = (topPaymentEntry.value / countPedidos) * 100;
-      String methodLabel = topPaymentEntry.key == 'efectivo'
-          ? 'Efectivo'
-          : topPaymentEntry.key == 'tarjeta'
-              ? 'Tarjeta'
-              : 'Transferencia';
+      String methodLabel = 'Transferencia';
       favPayment = '$methodLabel (${pct.toStringAsFixed(0)}%)';
     }
 
@@ -1136,11 +1117,7 @@ class _ManagementScreenState extends ConsumerState<ManagementScreen> with Single
                 ? 'Domicilio'
                 : 'Recoger';
 
-        String paymentText = order.metodoPago == 'efectivo'
-            ? 'Efectivo'
-            : order.metodoPago == 'tarjeta'
-                ? 'Tarjeta'
-                : 'Transferencia';
+        String paymentText = 'Transferencia';
 
         return Container(
           decoration: BoxDecoration(
